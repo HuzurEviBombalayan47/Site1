@@ -72,6 +72,19 @@ def job_id(client):
     return jid
 
 
+def test_audio_redirect_is_r2(client, job_id):
+    # Do not follow redirect - inspect 307 Location for R2 host
+    r = client.get(f"{API}/jobs/{job_id}/audio", allow_redirects=False, timeout=TIMEOUT)
+    assert r.status_code in (302, 307), f"expected redirect, got {r.status_code}"
+    loc = r.headers.get("Location", "")
+    assert "r2.cloudflarestorage.com" in loc, f"audio redirect not to R2: {loc}"
+    # Follow and read a chunk to confirm bytes
+    r2 = requests.get(loc, timeout=TIMEOUT, stream=True)
+    assert r2.status_code == 200
+    chunk = next(r2.iter_content(4096))
+    assert chunk and len(chunk) > 100
+
+
 def test_job_processes_to_ready(client, job_id):
     deadline = time.time() + 240
     last = None
@@ -86,6 +99,11 @@ def test_job_processes_to_ready(client, job_id):
             pytest.fail(f"job errored: {last}")
         time.sleep(3)
     assert last["status"] == "ready", f"status={last.get('status')}"
+
+    # R2 storage checks: audio_key set, no legacy audio_path
+    assert last.get("audio_key"), "audio_key missing"
+    assert last["audio_key"].startswith("shitpost-studio/jobs/"), f"unexpected audio_key: {last['audio_key']}"
+    assert "audio_path" not in last or not last.get("audio_path"), f"unexpected audio_path in job doc: {last.get('audio_path')}"
 
     # transcript
     tr = last.get("transcript") or {}
@@ -161,6 +179,14 @@ def test_render(client, job_id):
         time.sleep(3)
     assert last.get("status") == "done", f"status={last.get('status')}"
     assert last.get("output_ready") is True
+    assert last.get("output_key"), "output_key missing"
+    assert last["output_key"].endswith("/output.mp4")
+
+    # Download must redirect to R2 presigned URL
+    dl_head = client.get(f"{API}/jobs/{job_id}/download", allow_redirects=False, timeout=TIMEOUT)
+    assert dl_head.status_code in (302, 307), f"expected redirect, got {dl_head.status_code}"
+    r2loc = dl_head.headers.get("Location", "")
+    assert "r2.cloudflarestorage.com" in r2loc, f"download redirect not to R2: {r2loc}"
 
     dl = client.get(f"{API}/jobs/{job_id}/download", timeout=120, stream=True)
     assert dl.status_code == 200

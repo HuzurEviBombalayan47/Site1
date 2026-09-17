@@ -226,7 +226,7 @@ async def get_audio(job_id: str):
     doc = await jobs.find_one({"id": job_id}, {"_id": 0})
     if not doc or not doc.get("audio_key"):
         raise HTTPException(404, "audio not found")
-    return RedirectResponse(storage.presigned_url(doc["audio_key"]))
+    return RedirectResponse(storage.presigned_url(doc["audio_key"], expires=86400))
 
 
 @api.get("/jobs/{job_id}/download")
@@ -235,7 +235,7 @@ async def download_video(job_id: str):
     if not doc or not doc.get("output_ready") or not doc.get("output_key"):
         raise HTTPException(404, "video not ready")
     return RedirectResponse(
-        storage.presigned_url(doc["output_key"], download_name=f"shitpost_{job_id[:8]}.mp4")
+        storage.presigned_url(doc["output_key"], expires=86400, download_name=f"shitpost_{job_id[:8]}.mp4")
     )
 
 

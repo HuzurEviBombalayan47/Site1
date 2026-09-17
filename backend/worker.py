@@ -1,6 +1,7 @@
 """Background worker (threaded, sync pymongo) for transcription/analysis and rendering."""
 import os
 import threading
+import shutil
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
@@ -92,6 +93,7 @@ def render_job(job_id: str):
         storage.upload_file(out, okey, "video/mp4")
         _update(job_id, status="done", output_ready=True, output_key=okey,
                 stage="Video hazır", progress=100)
+        shutil.rmtree(job_dir, ignore_errors=True)
     except Exception as e:
         traceback.print_exc()
         _update(job_id, status="error", stage="Render hatası", error=str(e)[:800])
