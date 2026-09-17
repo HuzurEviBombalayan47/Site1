@@ -12,7 +12,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, Body
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import logging
@@ -20,6 +20,7 @@ import logging
 from providers import media
 from pipeline.sfx import sfx_list, sfx_path, SFX_LIBRARY
 from pipeline.timeline import FORMATS
+import storage_s3 as storage
 import worker
 
 mongo_url = os.environ["MONGO_URL"]
@@ -94,12 +95,15 @@ async def create_job(
         raise HTTPException(400, "invalid format")
 
     job_id = str(uuid.uuid4())
-    job_dir = STORAGE / job_id
-    job_dir.mkdir(parents=True, exist_ok=True)
+    if not storage.configured():
+        raise HTTPException(503, "Object storage not configured (set S3_BUCKET / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY)")
     ext = Path(audio.filename or "audio.mp3").suffix or ".mp3"
-    audio_path = job_dir / f"input{ext}"
-    with open(audio_path, "wb") as f:
-        shutil.copyfileobj(audio.file, f)
+    data = await audio.read()
+    akey = storage.audio_key(job_id, ext)
+    try:
+        storage.put_bytes(akey, data, audio.content_type or "audio/mpeg")
+    except Exception as e:
+        raise HTTPException(502, f"upload to storage failed: {e}")
 
     doc = {
         "id": job_id,
@@ -109,12 +113,14 @@ async def create_job(
         "mode": mode,
         "format": format,
         "audio_filename": audio.filename,
-        "audio_path": str(audio_path),
+        "audio_key": akey,
+        "audio_ext": ext,
         "audio_duration": None,
         "transcript": None,
         "timeline": None,
         "caption_style": None,
         "output_ready": False,
+        "output_key": None,
         "error": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -218,23 +224,19 @@ async def patch_job(job_id: str, payload: dict = Body(...)):
 @api.get("/jobs/{job_id}/audio")
 async def get_audio(job_id: str):
     doc = await jobs.find_one({"id": job_id}, {"_id": 0})
-    if not doc:
-        raise HTTPException(404, "job not found")
-    p = Path(doc["audio_path"])
-    if not p.exists():
+    if not doc or not doc.get("audio_key"):
         raise HTTPException(404, "audio not found")
-    return FileResponse(str(p))
+    return RedirectResponse(storage.presigned_url(doc["audio_key"]))
 
 
 @api.get("/jobs/{job_id}/download")
 async def download_video(job_id: str):
     doc = await jobs.find_one({"id": job_id}, {"_id": 0})
-    if not doc or not doc.get("output_ready"):
+    if not doc or not doc.get("output_ready") or not doc.get("output_key"):
         raise HTTPException(404, "video not ready")
-    out = Path(doc.get("output_path") or (STORAGE / job_id / "output.mp4"))
-    if not out.exists():
-        raise HTTPException(404, "video file missing")
-    return FileResponse(str(out), media_type="video/mp4", filename=f"shitpost_{job_id[:8]}.mp4")
+    return RedirectResponse(
+        storage.presigned_url(doc["output_key"], download_name=f"shitpost_{job_id[:8]}.mp4")
+    )
 
 
 app.include_router(api)

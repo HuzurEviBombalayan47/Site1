@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Search, Loader2, Check } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import api from "@/api";
@@ -69,6 +69,9 @@ export default function MediaBrowser({ open, onOpenChange, clip, jobId, onApply 
       <DialogContent className="max-w-3xl bg-card border-border text-foreground" data-testid="media-browser">
         <DialogHeader>
           <DialogTitle className="font-display">Medya kütüphanesi</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            Bu görsel için alternatif fotoğraf, video veya GIF ara ve seç.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex gap-2 mb-3">
