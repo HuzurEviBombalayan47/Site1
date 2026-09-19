@@ -1,0 +1,329 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 2
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,DejaVu Sans,54,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,1,2,60,60,86,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:02.30,Default,,0,0,0,,Düşünün, bir gün uyanıyorsunuz. Ama
+Dialogue: 0,0:00:02.30,0:00:04.50,Default,,0,0,0,,kıyafetleriniz, adınız, hatta
+Dialogue: 0,0:00:04.50,0:00:06.90,Default,,0,0,0,,ailenizin size hitap ettiği şekilde bile
+Dialogue: 0,0:00:06.90,0:00:09.12,Default,,0,0,0,,bir tuhaflık var. Sanki herkes
+Dialogue: 0,0:00:09.12,0:00:10.90,Default,,0,0,0,,sizden başka biri olmanızı
+Dialogue: 0,0:00:10.90,0:00:13.41,Default,,0,0,0,,istiyor. Bu bir kabus değil.
+Dialogue: 0,0:00:13.66,0:00:16.04,Default,,0,0,0,,Bu, 1960'lı yıllarda bir
+Dialogue: 0,0:00:16.04,0:00:18.60,Default,,0,0,0,,bilim insanının cinsiyetin tamamen çevreyle
+Dialogue: 0,0:00:18.60,0:00:20.98,Default,,0,0,0,,şekillenebileceğine inandığı gerçek bir
+Dialogue: 0,0:00:20.98,0:00:22.80,Default,,0,0,0,,deneydi. Bu adamın adı John
+Dialogue: 0,0:00:22.80,0:00:23.80,Default,,0,0,0,,Money'di.
+Dialogue: 0,0:00:30.36,0:00:32.66,Default,,0,0,0,,Ama işin içine insan psikolojisi girdiği
+Dialogue: 0,0:00:32.66,0:00:35.24,Default,,0,0,0,,anda her şey bir tuhaflık kazanıyor.
+Dialogue: 0,0:00:35.36,0:00:37.40,Default,,0,0,0,,O zamanlar toplumun cinsiyet ve kimlik
+Dialogue: 0,0:00:37.40,0:00:39.90,Default,,0,0,0,,üzerine düşünceleri oldukça katıydı.
+Dialogue: 0,0:00:39.90,0:00:41.86,Default,,0,0,0,,Erkek, erkekti, kadın,
+Dialogue: 0,0:00:41.86,0:00:44.20,Default,,0,0,0,,kadındı. Manny ise bu çizgileri
+Dialogue: 0,0:00:44.20,0:00:46.22,Default,,0,0,0,,silip geçmek istiyordu. İşte
+Dialogue: 0,0:00:46.22,0:00:48.06,Default,,0,0,0,,karşımızda deneyin öznesi olan
+Dialogue: 0,0:00:48.06,0:00:50.26,Default,,0,0,0,,David. Henüz bir çocuk.
+Dialogue: 0,0:00:50.62,0:00:53.10,Default,,0,0,0,,Masum, kırılgan ve tamamen kontrol dışı
+Dialogue: 0,0:00:53.10,0:00:55.66,Default,,0,0,0,,bir dünyada. Doğduğu andan itibaren erkek
+Dialogue: 0,0:00:55.66,0:00:57.80,Default,,0,0,0,,olması beklenen bir beden. Ama bir
+Dialogue: 0,0:00:57.80,0:01:00.04,Default,,0,0,0,,olay onu tamamıyla farklı bir yola
+Dialogue: 0,0:01:00.04,0:01:02.32,Default,,0,0,0,,sürüklüyor. Küçük yaşta yaşadığı bir
+Dialogue: 0,0:01:02.32,0:01:04.28,Default,,0,0,0,,kaza onun biyolojik kimliğini
+Dialogue: 0,0:01:04.28,0:01:06.76,Default,,0,0,0,,değiştirmiş gibi görünüyordu. Bir yandan
+Dialogue: 0,0:01:06.76,0:01:08.88,Default,,0,0,0,,bedeni erkek kalıyor. Ama Money'in
+Dialogue: 0,0:01:08.88,0:01:11.18,Default,,0,0,0,,teorilerine göre cinsiyet kimliği tamamen
+Dialogue: 0,0:01:11.18,0:01:13.30,Default,,0,0,0,,yeniden yazılabilirdi. Money'nin
+Dialogue: 0,0:01:13.30,0:01:15.48,Default,,0,0,0,,yaklaşımı bilimsel, sistematik ve
+Dialogue: 0,0:01:15.48,0:01:17.86,Default,,0,0,0,,soğukkanlı. Ama bu soğukkanlılığın
+Dialogue: 0,0:01:17.86,0:01:20.32,Default,,0,0,0,,arkasında bir tür saplantı var. David'in
+Dialogue: 0,0:01:20.32,0:01:22.50,Default,,0,0,0,,kimliğini bir laboratuvar deneyi gibi ele
+Dialogue: 0,0:01:22.50,0:01:24.79,Default,,0,0,0,,alıyor. Peki ya David, bu küçük
+Dialogue: 0,0:01:24.79,0:01:26.67,Default,,0,0,0,,çocuk ne kadar farkında olan, ne
+Dialogue: 0,0:01:26.67,0:01:29.09,Default,,0,0,0,,kadar masum, ne kadar direnç gösterebilen
+Dialogue: 0,0:01:29.09,0:01:31.61,Default,,0,0,0,,biri? Deneyin ilk aşamasında her şey
+Dialogue: 0,0:01:31.61,0:01:33.93,Default,,0,0,0,,planlanmış. Hormonlar, terapi
+Dialogue: 0,0:01:33.93,0:01:36.37,Default,,0,0,0,,seansları, isim değişimi, sosyal
+Dialogue: 0,0:01:36.37,0:01:38.85,Default,,0,0,0,,roller... Ama insan ruhu öyle
+Dialogue: 0,0:01:38.85,0:01:41.17,Default,,0,0,0,,bir mekanizma ki hiçbir plan
+Dialogue: 0,0:01:41.17,0:01:43.55,Default,,0,0,0,,onu tamamen kontrol edemez.
+Dialogue: 0,0:01:43.55,0:01:45.77,Default,,0,0,0,,Deneyin başında David'in çevresindeki
+Dialogue: 0,0:01:45.77,0:01:48.19,Default,,0,0,0,,insanlar dikkatle seçilmişti.
+Dialogue: 0,0:01:48.81,0:01:51.09,Default,,0,0,0,,Annesi ve babasıyla sürekli iletişim
+Dialogue: 0,0:01:51.09,0:01:53.57,Default,,0,0,0,,kuruyor. Her davranışı, her tepkiyi
+Dialogue: 0,0:01:53.57,0:01:55.41,Default,,0,0,0,,kaydediyordu. Ebeveynler
+Dialogue: 0,0:01:55.41,0:01:56.95,Default,,0,0,0,,başlangıçta heyecanlı ve
+Dialogue: 0,0:01:56.95,0:01:59.05,Default,,0,0,0,,işbirlikçiydiler. Bir bakıma umut
+Dialogue: 0,0:01:59.05,0:02:01.37,Default,,0,0,0,,taşıyorlardı. Ama umut, deneyin
+Dialogue: 0,0:02:01.37,0:02:03.59,Default,,0,0,0,,gerçek yüzüyle tanıştığında hızla
+Dialogue: 0,0:02:03.59,0:02:05.95,Default,,0,0,0,,silikleşecek bir gölgeydi. Manny
+Dialogue: 0,0:02:05.95,0:02:08.37,Default,,0,0,0,,her seansda çocuğun davranışlarını,
+Dialogue: 0,0:02:08.37,0:02:10.89,Default,,0,0,0,,mimiklerini, oyunlarını analiz ediyor.
+Dialogue: 0,0:02:10.89,0:02:13.37,Default,,0,0,0,,Sanki bir tabloyu çözüyormuş gibi. Ama
+Dialogue: 0,0:02:13.37,0:02:15.89,Default,,0,0,0,,tablo David'in psikolojisi olunca... Her
+Dialogue: 0,0:02:15.89,0:02:18.09,Default,,0,0,0,,çizgi bir çığlık, her renk bir
+Dialogue: 0,0:02:18.09,0:02:20.27,Default,,0,0,0,,korku içeriyor. David'in adı
+Dialogue: 0,0:02:20.27,0:02:22.25,Default,,0,0,0,,değiştirildi, bir sembol haline
+Dialogue: 0,0:02:22.25,0:02:24.77,Default,,0,0,0,,geldi. Artık David değildi,
+Dialogue: 0,0:02:24.77,0:02:27.02,Default,,0,0,0,,Brenda olmuştu. Yeni bir kimlik,
+Dialogue: 0,0:02:27.37,0:02:29.61,Default,,0,0,0,,yeni bir sosyal rol, yeni bir
+Dialogue: 0,0:02:29.61,0:02:31.93,Default,,0,0,0,,sen. Ama iç dünyası bu dönüşümü
+Dialogue: 0,0:02:31.93,0:02:34.49,Default,,0,0,0,,aynı hızla kabul etmiyordu. Money,
+Dialogue: 0,0:02:34.49,0:02:36.97,Default,,0,0,0,,Brenda'nın davranışlarını kaydederken, küçük
+Dialogue: 0,0:02:36.97,0:02:39.39,Default,,0,0,0,,çocuğun ruhunda ne kadar kırılmalar meydana
+Dialogue: 0,0:02:39.39,0:02:41.33,Default,,0,0,0,,geldiğini fark etmemeyi tercih ediyor
+Dialogue: 0,0:02:41.33,0:02:43.41,Default,,0,0,0,,gibiydi. Çünkü bilimsel nesne gibi
+Dialogue: 0,0:02:43.41,0:02:45.55,Default,,0,0,0,,davranmak insanı görmekten daha
+Dialogue: 0,0:02:45.55,0:02:47.85,Default,,0,0,0,,kolaydır. Ama gerçek dünyada
+Dialogue: 0,0:02:47.85,0:02:50.29,Default,,0,0,0,,insan bir nesne değil, karmaşık ve
+Dialogue: 0,0:02:50.29,0:02:52.61,Default,,0,0,0,,dirençli bir labirenttir. İlk aşama
+Dialogue: 0,0:02:52.61,0:02:54.75,Default,,0,0,0,,boyunca money teorilerini doğrulamaya
+Dialogue: 0,0:02:54.75,0:02:57.27,Default,,0,0,0,,çalışırken, Brenda bir yandan yeni rolüne
+Dialogue: 0,0:02:57.27,0:02:59.49,Default,,0,0,0,,uyum sağlamak için çabalıyor, diğer
+Dialogue: 0,0:02:59.49,0:03:01.55,Default,,0,0,0,,yandan kendi içsel direnişini
+Dialogue: 0,0:03:01.55,0:03:04.03,Default,,0,0,0,,sürdürüyor. Çevresindeki yetişkinlerin
+Dialogue: 0,0:03:04.03,0:03:06.61,Default,,0,0,0,,gözünde her hareket bir veri, her
+Dialogue: 0,0:03:06.61,0:03:09.05,Default,,0,0,0,,tepki bir kanıt. Ama içten içe
+Dialogue: 0,0:03:09.05,0:03:10.99,Default,,0,0,0,,David Brenda karmaşasının büyüyen
+Dialogue: 0,0:03:10.99,0:03:13.53,Default,,0,0,0,,gölgesi, deneyin ilerleyen aşamalarında
+Dialogue: 0,0:03:13.53,0:03:15.61,Default,,0,0,0,,çok daha derin yaralara yol açacak
+Dialogue: 0,0:03:15.61,0:03:17.95,Default,,0,0,0,,bir sır gibi saklanıyor. Ve işte
+Dialogue: 0,0:03:17.95,0:03:20.35,Default,,0,0,0,,burada izleyen bizler için önemli bir
+Dialogue: 0,0:03:20.35,0:03:22.87,Default,,0,0,0,,nokta belirliyor. Deneyin ilk kısmı
+Dialogue: 0,0:03:22.87,0:03:25.07,Default,,0,0,0,,sadece bilimsel bir plan değil, bir
+Dialogue: 0,0:03:25.07,0:03:27.47,Default,,0,0,0,,çocuğun psikolojik dokusunun sınandığı bir
+Dialogue: 0,0:03:27.47,0:03:29.51,Default,,0,0,0,,labirent. Her seansda, her
+Dialogue: 0,0:03:29.51,0:03:32.09,Default,,0,0,0,,müdahalede çocuğun kimliği parçalanıyor
+Dialogue: 0,0:03:32.09,0:03:34.59,Default,,0,0,0,,ve yeniden şekillendirilmeye çalışılıyor.
+Dialogue: 0,0:03:34.77,0:03:36.91,Default,,0,0,0,,Ama insan ruhu öyle bir şeydir
+Dialogue: 0,0:03:36.91,0:03:39.49,Default,,0,0,0,,ki ne kadar zorlanırsa zorlansın bir
+Dialogue: 0,0:03:39.49,0:03:41.61,Default,,0,0,0,,direnç noktası vardır. Brenda
+Dialogue: 0,0:03:41.61,0:03:44.17,Default,,0,0,0,,henüz farkında olmasa da bu direnç
+Dialogue: 0,0:03:44.17,0:03:46.67,Default,,0,0,0,,noktasının ilk kıpırdanışları deneyin
+Dialogue: 0,0:03:46.67,0:03:49.09,Default,,0,0,0,,başlangıcında gizli bir sessizlik olarak
+Dialogue: 0,0:03:49.09,0:03:51.57,Default,,0,0,0,,kendini gösteriyor. Mane'nin notlarında
+Dialogue: 0,0:03:51.57,0:03:53.25,Default,,0,0,0,,detaylı bir kayıt var.
+Dialogue: 0,0:03:53.25,0:03:55.65,Default,,0,0,0,,Gülümsemeler, ağlamalar, korku
+Dialogue: 0,0:03:55.65,0:03:57.91,Default,,0,0,0,,anları. Ama kayıtların arasındaki
+Dialogue: 0,0:03:57.91,0:04:00.43,Default,,0,0,0,,sessizlik kaydedilmemiş ama en
+Dialogue: 0,0:04:00.43,0:04:02.70,Default,,0,0,0,,gerçekçi anları saklıyor. İşte
+Dialogue: 0,0:04:02.70,0:04:04.74,Default,,0,0,0,,deneyin ilk kısmında olan biten
+Dialogue: 0,0:04:04.74,0:04:07.20,Default,,0,0,0,,budur. Bir çocuğun kimliğinin bilimsel
+Dialogue: 0,0:04:07.20,0:04:09.02,Default,,0,0,0,,bir objeye dönüştürülmesi.
+Dialogue: 0,0:04:09.06,0:04:11.64,Default,,0,0,0,,Gözlemler, analizler ama aynı zamanda
+Dialogue: 0,0:04:11.64,0:04:14.00,Default,,0,0,0,,iç dünyasında sessizce büyüyen
+Dialogue: 0,0:04:14.00,0:04:16.14,Default,,0,0,0,,karmaşa. Ve biz uzaktan
+Dialogue: 0,0:04:16.14,0:04:18.60,Default,,0,0,0,,bakarken bu karmaşanın ne kadar kırılgan
+Dialogue: 0,0:04:18.60,0:04:20.32,Default,,0,0,0,,ve tehlikeli olduğunu yalnızca
+Dialogue: 0,0:04:20.32,0:04:22.54,Default,,0,0,0,,hissedebiliyoruz. Deneyin son aşamasına
+Dialogue: 0,0:04:22.54,0:04:24.98,Default,,0,0,0,,gelindiğinde Brenda artık sadece bir
+Dialogue: 0,0:04:24.98,0:04:27.28,Default,,0,0,0,,deney nesnesi değildi. O, kendi
+Dialogue: 0,0:04:27.28,0:04:29.44,Default,,0,0,0,,kimliğinin paramparça olduğunu fark etmeye
+Dialogue: 0,0:04:29.44,0:04:31.41,Default,,0,0,0,,başlamıştı. Money'nin teorik
+Dialogue: 0,0:04:31.41,0:04:33.47,Default,,0,0,0,,çerçevesi, sosyal ve psikolojik
+Dialogue: 0,0:04:33.47,0:04:35.69,Default,,0,0,0,,kurallar artık onun gerçekliğiyle
+Dialogue: 0,0:04:35.69,0:04:37.75,Default,,0,0,0,,çatışıyordu. İçsel dünyasıyla
+Dialogue: 0,0:04:37.75,0:04:40.21,Default,,0,0,0,,dışarıdan beklenen rol arasındaki boşluk,
+Dialogue: 0,0:04:40.21,0:04:42.37,Default,,0,0,0,,çocukluk ve ergenlik boyunca giderek
+Dialogue: 0,0:04:42.37,0:04:44.81,Default,,0,0,0,,büyüyordu. Bu boşluk sessiz bir
+Dialogue: 0,0:04:44.81,0:04:47.21,Default,,0,0,0,,çığlık gibi Brenda'nın davranışlarının her
+Dialogue: 0,0:04:47.21,0:04:49.63,Default,,0,0,0,,köşesine sızıyordu. Adım adım
+Dialogue: 0,0:04:49.63,0:04:51.71,Default,,0,0,0,,David'in geçmiş benliği geri gelmeye
+Dialogue: 0,0:04:51.71,0:04:53.89,Default,,0,0,0,,başlamıştı. Brenda dışarıya
+Dialogue: 0,0:04:53.89,0:04:55.93,Default,,0,0,0,,uyumlu bir kız gibi görünmeye devam
+Dialogue: 0,0:04:55.93,0:04:58.42,Default,,0,0,0,,ederken... Iç dünyasında hala
+Dialogue: 0,0:04:58.42,0:05:00.82,Default,,0,0,0,,erkek olarak kendini hissediyordu. Bu
+Dialogue: 0,0:05:00.82,0:05:03.02,Default,,0,0,0,,durum Money'nin teorisinin temel
+Dialogue: 0,0:05:03.02,0:05:05.18,Default,,0,0,0,,varsayımıyla çelişiyordu. Teori
+Dialogue: 0,0:05:05.18,0:05:07.52,Default,,0,0,0,,cinsiyet kimliğinin şekillendirilebileceğini
+Dialogue: 0,0:05:07.52,0:05:09.90,Default,,0,0,0,,öngörüyordu. Ama insan psikolojisi
+Dialogue: 0,0:05:09.90,0:05:12.32,Default,,0,0,0,,öyle basit değildi. Brenda'nın kendi
+Dialogue: 0,0:05:12.32,0:05:14.84,Default,,0,0,0,,bedenine ve kimliğine dair farkındalığı
+Dialogue: 0,0:05:14.84,0:05:16.98,Default,,0,0,0,,deney boyunca bastırılmış ama yok
+Dialogue: 0,0:05:16.98,0:05:19.22,Default,,0,0,0,,edilememişti. Aile içinde
+Dialogue: 0,0:05:19.22,0:05:21.42,Default,,0,0,0,,ebeveynler üzerindeki baskı artık
+Dialogue: 0,0:05:21.42,0:05:23.12,Default,,0,0,0,,görünür bir hale gelmişti.
+Dialogue: 0,0:05:23.49,0:05:25.70,Default,,0,0,0,,Yönlendirmeleri doğrultusunda
+Dialogue: 0,0:05:25.70,0:05:27.78,Default,,0,0,0,,Brenda'nın yeni kimliğine uyum
+Dialogue: 0,0:05:27.78,0:05:29.92,Default,,0,0,0,,sağlaması bekleniyordu. Ama her
+Dialogue: 0,0:05:29.92,0:05:31.72,Default,,0,0,0,,uyumanı içsel bir kopuş
+Dialogue: 0,0:05:31.72,0:05:33.68,Default,,0,0,0,,yaratıyordu. Küçük bir çocuğun
+Dialogue: 0,0:05:33.68,0:05:35.96,Default,,0,0,0,,ruhunda rol ile gerçeklik arasındaki
+Dialogue: 0,0:05:35.96,0:05:38.40,Default,,0,0,0,,bu uyumsuzluk derin bir yabancılaşma
+Dialogue: 0,0:05:38.40,0:05:40.72,Default,,0,0,0,,ve depresyon tohumu ekiyordu.
+Dialogue: 0,0:05:40.72,0:05:42.60,Default,,0,0,0,,Gülüşler yapay, davranışlar zor
+Dialogue: 0,0:05:42.60,0:05:44.74,Default,,0,0,0,,akıydı. Bir çocuğun kendi benliğine
+Dialogue: 0,0:05:44.74,0:05:47.24,Default,,0,0,0,,yabancılaşması sessiz ama derin
+Dialogue: 0,0:05:47.24,0:05:49.56,Default,,0,0,0,,bir travmaydı. Manny, deneyin
+Dialogue: 0,0:05:49.56,0:05:52.00,Default,,0,0,0,,ilerleyen aşamalarında Brenda'nın küçük
+Dialogue: 0,0:05:52.00,0:05:54.53,Default,,0,0,0,,isyan kırıntılarını kayda alıyor. Ama
+Dialogue: 0,0:05:54.53,0:05:56.77,Default,,0,0,0,,çoğu zaman bu kırılmaların gerçek boyutunu
+Dialogue: 0,0:05:56.77,0:05:58.87,Default,,0,0,0,,fark edemiyordu. Çocuk küçük
+Dialogue: 0,0:05:58.87,0:06:01.33,Default,,0,0,0,,ipuçlarıyla kendi gerçek benliğini saklamaya
+Dialogue: 0,0:06:01.33,0:06:03.33,Default,,0,0,0,,çalışıyor. Bazen anlık öfke
+Dialogue: 0,0:06:03.33,0:06:05.79,Default,,0,0,0,,patlamaları ya da duygusal tepkilerle
+Dialogue: 0,0:06:05.79,0:06:08.31,Default,,0,0,0,,kendini açığa vuruyordu. Terapisler,
+Dialogue: 0,0:06:08.31,0:06:10.87,Default,,0,0,0,,ebeveynler ve Money'nin kendisi bunları
+Dialogue: 0,0:06:10.87,0:06:13.25,Default,,0,0,0,,sadece beklenmeyen davranışlar olarak
+Dialogue: 0,0:06:13.25,0:06:15.55,Default,,0,0,0,,yorumluyordu. Oysa bu davranışlar
+Dialogue: 0,0:06:15.55,0:06:17.55,Default,,0,0,0,,David'in içsel direnişinin sessiz
+Dialogue: 0,0:06:17.55,0:06:19.39,Default,,0,0,0,,çığlığıydı. Ergenlik dönemine
+Dialogue: 0,0:06:19.39,0:06:21.87,Default,,0,0,0,,yaklaştıkça Brandon'ın psikolojik yıkımı
+Dialogue: 0,0:06:21.87,0:06:24.17,Default,,0,0,0,,daha belirgin bir hale geliyordu.
+Dialogue: 0,0:06:24.27,0:06:26.73,Default,,0,0,0,,Cinsiyet kimliği, sosyal baskılar, içsel
+Dialogue: 0,0:06:26.73,0:06:29.03,Default,,0,0,0,,direniş ve yapay rollerin birleşimi
+Dialogue: 0,0:06:29.03,0:06:31.55,Default,,0,0,0,,ciddi bir psikolojik stres yaratmıştı.
+Dialogue: 0,0:06:31.61,0:06:33.99,Default,,0,0,0,,Kimlik karmaşası, depresyon ve ansiyete
+Dialogue: 0,0:06:33.99,0:06:36.43,Default,,0,0,0,,belirtileri artmıştı. Küçük bir çocukken
+Dialogue: 0,0:06:36.43,0:06:38.97,Default,,0,0,0,,başlayan deney artık bir yetişkinin
+Dialogue: 0,0:06:38.97,0:06:41.45,Default,,0,0,0,,ruhunu şekillendiren travmatik bir süreç
+Dialogue: 0,0:06:41.45,0:06:44.01,Default,,0,0,0,,haline gelmişti. Manny ve ekibi için
+Dialogue: 0,0:06:44.01,0:06:46.25,Default,,0,0,0,,hala bu sadece bir bilimsel veri
+Dialogue: 0,0:06:46.25,0:06:48.35,Default,,0,0,0,,toplama süreciydi. Brenda için ise
+Dialogue: 0,0:06:48.35,0:06:50.65,Default,,0,0,0,,çocukluktan ergenliğe uzanan bir kimlik
+Dialogue: 0,0:06:50.65,0:06:53.07,Default,,0,0,0,,kırılmasının öyküsüydü. Ve işte en
+Dialogue: 0,0:06:53.07,0:06:55.65,Default,,0,0,0,,kritik detay, deneyin sonunda Brenda
+Dialogue: 0,0:06:55.65,0:06:57.65,Default,,0,0,0,,artık Brenda değil, David
+Dialogue: 0,0:06:57.65,0:06:59.41,Default,,0,0,0,,olarak kendi kimliğini geri
+Dialogue: 0,0:06:59.41,0:07:01.77,Default,,0,0,0,,kazanıyordu. Ama bu geri dönüş
+Dialogue: 0,0:07:01.77,0:07:04.35,Default,,0,0,0,,sadece ismini değiştirmekle veya sosyal
+Dialogue: 0,0:07:04.35,0:07:06.81,Default,,0,0,0,,rollere geri dönmekle sınırlı değildi.
+Dialogue: 0,0:07:06.81,0:07:08.77,Default,,0,0,0,,Yıllarca bastırılmış duygular,
+Dialogue: 0,0:07:08.77,0:07:11.09,Default,,0,0,0,,travmalar ve yabancılaşmış bir benlik
+Dialogue: 0,0:07:11.09,0:07:13.37,Default,,0,0,0,,vardı. Maneğin teorileri,
+Dialogue: 0,0:07:13.37,0:07:15.75,Default,,0,0,0,,kimliği şekillendirme hayali çocuk üzerinde
+Dialogue: 0,0:07:15.75,0:07:17.83,Default,,0,0,0,,ciddi ve kalıcı bir psikolojik hasar
+Dialogue: 0,0:07:17.83,0:07:20.37,Default,,0,0,0,,bırakmıştı. Bu hasar, terapi odalarının
+Dialogue: 0,0:07:20.37,0:07:22.77,Default,,0,0,0,,sınırlarını çoktan aşmış, bireyin tüm
+Dialogue: 0,0:07:22.77,0:07:24.51,Default,,0,0,0,,yaşamını etkileyecek bir boyuta
+Dialogue: 0,0:07:24.51,0:07:26.97,Default,,0,0,0,,ulaşmıştı. Deneyin ardında kalan ise
+Dialogue: 0,0:07:26.97,0:07:29.01,Default,,0,0,0,,bir tablo gibiydi. Sessiz,
+Dialogue: 0,0:07:29.01,0:07:31.55,Default,,0,0,0,,görünmez ama derin, yaralarla dolu
+Dialogue: 0,0:07:31.55,0:07:34.03,Default,,0,0,0,,bir hikaye. Brandon'ın travması, bilim
+Dialogue: 0,0:07:34.03,0:07:36.33,Default,,0,0,0,,adına yapılan müdahalenin, insan ruhu
+Dialogue: 0,0:07:36.33,0:07:38.69,Default,,0,0,0,,üzerindeki yıkıcı etkisinin somut bir
+Dialogue: 0,0:07:38.69,0:07:41.23,Default,,0,0,0,,örneği olarak tarihe geçti. Money'nin
+Dialogue: 0,0:07:41.23,0:07:43.45,Default,,0,0,0,,amaçladığı gibi, cinsiyet kimliğinin
+Dialogue: 0,0:07:43.45,0:07:45.91,Default,,0,0,0,,yönlendirilebilirliği sadece teorik
+Dialogue: 0,0:07:45.91,0:07:47.19,Default,,0,0,0,,bir fikir olarak kaldı.
+Dialogue: 0,0:07:47.42,0:07:49.44,Default,,0,0,0,,Gerçeklik, insan psikolojisinin
+Dialogue: 0,0:07:49.44,0:07:51.52,Default,,0,0,0,,karmaşıklığını ortaya koydu. Ve
+Dialogue: 0,0:07:51.52,0:07:53.62,Default,,0,0,0,,böylece John Money'nin deneyinin
+Dialogue: 0,0:07:53.62,0:07:55.76,Default,,0,0,0,,tamamı, bilimsel bir araştırma adı
+Dialogue: 0,0:07:55.76,0:07:57.42,Default,,0,0,0,,altında küçük bir çocuğun
+Dialogue: 0,0:07:57.42,0:07:59.90,Default,,0,0,0,,kimliğinin, ruhunun ve hayatının
+Dialogue: 0,0:07:59.90,0:08:02.38,Default,,0,0,0,,parçalanmasıyla son buldu. Görünürdeki
+Dialogue: 0,0:08:02.38,0:08:04.76,Default,,0,0,0,,başarı ve gözlemler ardında yıllarca
+Dialogue: 0,0:08:04.76,0:08:07.10,Default,,0,0,0,,sürecek bir psikolojik yük bıraktı. Bu
+Dialogue: 0,0:08:07.10,0:08:09.68,Default,,0,0,0,,deney, insan psikolojisinin ne kadar kırılgan
+Dialogue: 0,0:08:09.68,0:08:11.88,Default,,0,0,0,,olduğunu ve etik sınırların ihmal
+Dialogue: 0,0:08:11.88,0:08:14.26,Default,,0,0,0,,edildiğinde nelere yol açabileceğini
+Dialogue: 0,0:08:14.26,0:08:16.20,Default,,0,0,0,,bize acı bir şekilde gösterdi.
+Dialogue: 0,0:08:16.41,0:08:19.01,Default,,0,0,0,,Deneyin son aşamasına gelindiğinde Brenda
+Dialogue: 0,0:08:19.01,0:08:21.21,Default,,0,0,0,,artık sadece bir deney nesnesi
+Dialogue: 0,0:08:21.21,0:08:23.71,Default,,0,0,0,,değildi. O, kendi kimliğinin paramparça
+Dialogue: 0,0:08:23.71,0:08:26.19,Default,,0,0,0,,olduğunu fark etmeye başlamıştı. Maneğinin
+Dialogue: 0,0:08:26.19,0:08:28.67,Default,,0,0,0,,teorik çerçevesi, sosyal ve psikolojik
+Dialogue: 0,0:08:28.67,0:08:30.99,Default,,0,0,0,,kurallar artık onun gerçekliğiyle
+Dialogue: 0,0:08:30.99,0:08:33.49,Default,,0,0,0,,çatışıyordu. İçsel dünyasıyla dışarıdan
+Dialogue: 0,0:08:33.49,0:08:36.05,Default,,0,0,0,,beklenen rol arasındaki boşluk çocukluk
+Dialogue: 0,0:08:36.05,0:08:38.55,Default,,0,0,0,,ve ergenlik boyunca giderek büyüyordu. Bu
+Dialogue: 0,0:08:38.55,0:08:40.53,Default,,0,0,0,,boşluk, sessiz bir çığlık gibi
+Dialogue: 0,0:08:40.53,0:08:42.67,Default,,0,0,0,,Brenda'nın davranışlarının her köşesine
+Dialogue: 0,0:08:42.67,0:08:44.95,Default,,0,0,0,,sızıyordu. Adım adım David'in
+Dialogue: 0,0:08:44.95,0:08:46.55,Default,,0,0,0,,geçmiş benliği geri gelmeye
+Dialogue: 0,0:08:46.55,0:08:48.87,Default,,0,0,0,,başlamıştı. Brenda dışarıya
+Dialogue: 0,0:08:48.87,0:08:50.79,Default,,0,0,0,,uyumlu bir kız gibi görünmeye devam
+Dialogue: 0,0:08:50.79,0:08:53.35,Default,,0,0,0,,ederken, iç dünyasında hala
+Dialogue: 0,0:08:53.35,0:08:55.77,Default,,0,0,0,,erkek olarak kendini hissediyordu. Bu
+Dialogue: 0,0:08:55.77,0:08:57.83,Default,,0,0,0,,durum Money'nin teorisinin temel
+Dialogue: 0,0:08:57.83,0:09:00.09,Default,,0,0,0,,varsayımıyla çelişiyordu. Teori
+Dialogue: 0,0:09:00.09,0:09:02.53,Default,,0,0,0,,cinsiyet kimliğinin şekillendirilebileceğini
+Dialogue: 0,0:09:02.53,0:09:04.87,Default,,0,0,0,,öngörüyordu. Ama insan psikolojisi
+Dialogue: 0,0:09:04.87,0:09:07.09,Default,,0,0,0,,öyle basit değildi. Brenda'nın kendi
+Dialogue: 0,0:09:07.09,0:09:09.51,Default,,0,0,0,,bedenine ve kimliğine dair farkındalığı
+Dialogue: 0,0:09:09.51,0:09:11.49,Default,,0,0,0,,deney boyunca bastırılmış ama yok
+Dialogue: 0,0:09:11.49,0:09:13.46,Default,,0,0,0,,edilememişti. Aile içinde
+Dialogue: 0,0:09:13.46,0:09:16.06,Default,,0,0,0,,ebeveynler üzerindeki baskı artık görünür
+Dialogue: 0,0:09:16.06,0:09:18.02,Default,,0,0,0,,bir hale gelmişti. Mane'nin
+Dialogue: 0,0:09:18.02,0:09:20.48,Default,,0,0,0,,yönlendirmeleri doğrultusunda Brandon'ın
+Dialogue: 0,0:09:20.48,0:09:22.22,Default,,0,0,0,,yeni kimliğine uyum sağlaması
+Dialogue: 0,0:09:22.22,0:09:24.56,Default,,0,0,0,,bekleniyordu. Ama her uyumanı
+Dialogue: 0,0:09:24.56,0:09:26.98,Default,,0,0,0,,içsel bir kopuş yaratıyordu. Küçük bir
+Dialogue: 0,0:09:26.98,0:09:29.20,Default,,0,0,0,,çocuğun ruhunda rol ile gerçeklik
+Dialogue: 0,0:09:29.20,0:09:31.22,Default,,0,0,0,,arasındaki bu uyumsuzluk derin bir
+Dialogue: 0,0:09:31.22,0:09:33.04,Default,,0,0,0,,yabancılaşma ve depresyon tohumu
+Dialogue: 0,0:09:33.04,0:09:35.62,Default,,0,0,0,,ekiyordu. Gülüşler yapay, davranışlar
+Dialogue: 0,0:09:35.62,0:09:37.98,Default,,0,0,0,,zora giydi. Bir çocuğun kendi benliğine
+Dialogue: 0,0:09:37.98,0:09:40.34,Default,,0,0,0,,yabancılaşması... Sessiz ama derin
+Dialogue: 0,0:09:40.34,0:09:42.70,Default,,0,0,0,,bir travmaydı. Manny, deneyin
+Dialogue: 0,0:09:42.70,0:09:44.98,Default,,0,0,0,,ilerleyen aşamalarında Brandon'ın küçük
+Dialogue: 0,0:09:44.98,0:09:47.54,Default,,0,0,0,,isyan kırıntılarını kayda alıyor. Ama
+Dialogue: 0,0:09:47.54,0:09:49.78,Default,,0,0,0,,çoğu zaman bu kırılmaların gerçek boyutunu
+Dialogue: 0,0:09:49.78,0:09:51.80,Default,,0,0,0,,fark edemiyordu. Çocuk, küçük
+Dialogue: 0,0:09:51.80,0:09:54.38,Default,,0,0,0,,ipuçlarıyla kendi gerçek benliğini saklamaya
+Dialogue: 0,0:09:54.38,0:09:56.52,Default,,0,0,0,,çalışıyor. Bazen anlık öfke
+Dialogue: 0,0:09:56.52,0:09:59.04,Default,,0,0,0,,patlamaları ya da duygusal tepkilerle
+Dialogue: 0,0:09:59.04,0:10:00.92,Default,,0,0,0,,kendini açığa vuruyordu.
+Dialogue: 0,0:10:00.92,0:10:03.00,Default,,0,0,0,,Terapisler, ebeveynler ve Manny'nin
+Dialogue: 0,0:10:03.00,0:10:05.00,Default,,0,0,0,,kendisi bunları sadece
+Dialogue: 0,0:10:05.00,0:10:07.54,Default,,0,0,0,,beklenmeyen davranışlar olarak yorumluyordu.
+Dialogue: 0,0:10:07.71,0:10:10.21,Default,,0,0,0,,Oysa bu davranışlar David'in içsel
+Dialogue: 0,0:10:10.21,0:10:12.63,Default,,0,0,0,,direnişinin sessiz çığlığıydı. Ergenlik
+Dialogue: 0,0:10:12.63,0:10:14.85,Default,,0,0,0,,dönemine yaklaştıkça Brandon'ın psikolojik
+Dialogue: 0,0:10:14.85,0:10:16.57,Default,,0,0,0,,yıkımı daha belirgin bir hale
+Dialogue: 0,0:10:16.57,0:10:18.69,Default,,0,0,0,,geliyordu. Cinsiyet kimliği, sosyal
+Dialogue: 0,0:10:18.69,0:10:21.19,Default,,0,0,0,,baskılar, içsel direniş ve yapay rollerin
+Dialogue: 0,0:10:21.19,0:10:23.29,Default,,0,0,0,,birleşimi ciddi bir psikolojik stres
+Dialogue: 0,0:10:23.29,0:10:25.49,Default,,0,0,0,,yaratmıştı. Kimlik karmaşası,
+Dialogue: 0,0:10:25.49,0:10:27.41,Default,,0,0,0,,depresyon ve ansiyete belirtileri
+Dialogue: 0,0:10:27.41,0:10:29.85,Default,,0,0,0,,artmıştı. Küçük bir çocukken başlayan
+Dialogue: 0,0:10:29.85,0:10:32.03,Default,,0,0,0,,deney artık bir yetişkinin ruhunu
+Dialogue: 0,0:10:32.03,0:10:34.27,Default,,0,0,0,,şekillendiren travmatik bir süreç haline
+Dialogue: 0,0:10:34.27,0:10:36.79,Default,,0,0,0,,gelmişti. Money ve ekibi için hala
+Dialogue: 0,0:10:36.79,0:10:39.21,Default,,0,0,0,,bu sadece bir bilimsel veri toplama
+Dialogue: 0,0:10:39.21,0:10:41.79,Default,,0,0,0,,süreciydi. Brenda içinse çocukluktan
+Dialogue: 0,0:10:41.79,0:10:43.99,Default,,0,0,0,,ergenliğe uzanan bir kimlik kırılmasının
+Dialogue: 0,0:10:43.99,0:10:46.33,Default,,0,0,0,,öyküsüydü. Ve işte en kritik
+Dialogue: 0,0:10:46.33,0:10:48.71,Default,,0,0,0,,detay, deneyin sonunda Brenda
+Dialogue: 0,0:10:48.71,0:10:51.21,Default,,0,0,0,,artık Brenda değil David olarak kendi
+Dialogue: 0,0:10:51.21,0:10:53.75,Default,,0,0,0,,kimliğini geri kazanıyordu. Ama bu
+Dialogue: 0,0:10:53.75,0:10:55.73,Default,,0,0,0,,geri dönüş sadece ismini
+Dialogue: 0,0:10:55.73,0:10:57.73,Default,,0,0,0,,değiştirmekle veya sosyal rollere geri
+Dialogue: 0,0:10:57.73,0:11:00.27,Default,,0,0,0,,dönmekle sınırlı değildi. Yıllarca
+Dialogue: 0,0:11:00.27,0:11:02.49,Default,,0,0,0,,bastırılmış duygular, travmalar...
+Dialogue: 0,0:11:02.52,0:11:05.06,Default,,0,0,0,,Yabancılaşmış bir benlik vardı.
+Dialogue: 0,0:11:05.06,0:11:07.50,Default,,0,0,0,,Money'nin teorileri, kimliği şekillendirme
+Dialogue: 0,0:11:07.50,0:11:09.80,Default,,0,0,0,,hayali çocuk üzerinde ciddi ve
+Dialogue: 0,0:11:09.80,0:11:12.35,Default,,0,0,0,,kalıcı bir psikolojik hasar bırakmıştı.
+Dialogue: 0,0:11:12.44,0:11:14.74,Default,,0,0,0,,Bu hasar, terapi odalarının sınırlarını
+Dialogue: 0,0:11:14.74,0:11:17.02,Default,,0,0,0,,çoktan aşmış, bireyin tüm yaşamını
+Dialogue: 0,0:11:17.02,0:11:19.60,Default,,0,0,0,,etkileyecek bir boyuta ulaşmıştı. Deneyin
+Dialogue: 0,0:11:19.60,0:11:21.95,Default,,0,0,0,,ardında kalan ise bir tablo gibiydi.
+Dialogue: 0,0:11:22.30,0:11:24.30,Default,,0,0,0,,Sessiz, görünmez ama derin
+Dialogue: 0,0:11:24.30,0:11:26.88,Default,,0,0,0,,yaralarla dolu bir hikaye. Brandon'ın
+Dialogue: 0,0:11:26.88,0:11:29.30,Default,,0,0,0,,travması, bilim adına yapılan müdahalenin
+Dialogue: 0,0:11:29.30,0:11:31.78,Default,,0,0,0,,insan ruhu üzerindeki yıkıcı etkisinin
+Dialogue: 0,0:11:31.78,0:11:32.50,Default,,0,0,0,,somut bir örneği olarak
+Dialogue: 0,0:11:34.42,0:11:36.92,Default,,0,0,0,,Money'nin amaçladığı gibi cinsiyet
+Dialogue: 0,0:11:36.92,0:11:39.32,Default,,0,0,0,,kimliğinin yönlendirilebilirliği sadece
+Dialogue: 0,0:11:39.32,0:11:41.56,Default,,0,0,0,,teorik bir fikir olarak kaldı.
+Dialogue: 0,0:11:41.56,0:11:43.52,Default,,0,0,0,,Gerçeklik, insan psikolojisinin
+Dialogue: 0,0:11:43.52,0:11:45.72,Default,,0,0,0,,karmaşıklığını ortaya koydu. Ve
+Dialogue: 0,0:11:45.72,0:11:47.84,Default,,0,0,0,,böylece John Money'nin deneyinin
+Dialogue: 0,0:11:47.84,0:11:49.94,Default,,0,0,0,,tamamı bilimsel bir araştırma adı
+Dialogue: 0,0:11:49.94,0:11:52.36,Default,,0,0,0,,altında küçük bir çocuğun kimliğinin,
+Dialogue: 0,0:11:52.36,0:11:54.68,Default,,0,0,0,,ruhunun ve hayatının parçalanmasıyla
+Dialogue: 0,0:11:54.68,0:11:56.78,Default,,0,0,0,,son buldu. Görünürdeki başarı ve
+Dialogue: 0,0:11:56.78,0:11:59.16,Default,,0,0,0,,gözlemler ardında yıllarca sürecek
+Dialogue: 0,0:11:59.16,0:12:01.75,Default,,0,0,0,,bir psikolojik yük bıraktı. Bu deney,
+Dialogue: 0,0:12:01.75,0:12:04.05,Default,,0,0,0,,insan psikolojisinin ne kadar kırılgan olduğunu
+Dialogue: 0,0:12:04.05,0:12:06.57,Default,,0,0,0,,ve etik sınırların ihmal edildiğinde
+Dialogue: 0,0:12:06.57,0:12:08.69,Default,,0,0,0,,nelere yol açabileceğini bize acı bir
+Dialogue: 0,0:12:08.69,0:12:09.77,Default,,0,0,0,,şekilde gösterdi.
