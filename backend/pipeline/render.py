@@ -2,6 +2,7 @@
 import os
 import subprocess
 import tempfile
+import textwrap
 import requests
 from pathlib import Path
 
@@ -10,8 +11,14 @@ from pipeline.timeline import FORMATS
 
 FPS = 30
 
-FADE_BY_MODE = {"normal": 0.14, "fast": 0.06, "shitpost": 0.0}
-FALLBACK_COLORS = ["0x1a1a2e", "0x16213e", "0x0f3460", "0x533483", "0x2d132c"]
+FADE_BY_MODE = {"documentary": 0.25, "normal": 0.14, "fast": 0.06, "shitpost": 0.0}
+
+_FONT_CANDIDATES = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+]
+DEJAVU = next((p for p in _FONT_CANDIDATES if os.path.exists(p)), _FONT_CANDIDATES[0])
 
 
 def _run(cmd: list):
@@ -53,11 +60,31 @@ def _fade_suffix(dur: float, fade: float):
     return f",fade=t=in:st=0:d={fade:.2f},fade=t=out:st={dur - fade:.2f}:d={fade:.2f}"
 
 
+def _text_card(text, w, h, dur, fade, job_dir, idx) -> Path:
+    """Animated typography over a moving cinematic gradient (never a plain solid color)."""
+    text = (text or "").strip() or "…"
+    wrapped = "\n".join(textwrap.wrap(text, width=26)[:4]) or "…"
+    txt_path = job_dir / f"txt_{idx:04d}.txt"
+    txt_path.write_text(wrapped)
+    fs = max(30, int(h / 14))
+    seg_out = job_dir / f"seg_{idx:04d}.mp4"
+    grad = (f"gradients=s={w}x{h}:c0=0x0c1018:c1=0x243350:x0=0:y0=0:"
+            f"x1={w}:y1={h}:speed=0.012:d={dur}")
+    vf = (f"format=yuv420p,drawtext=fontfile={DEJAVU}:textfile={txt_path}:fontcolor=0xEAEAEA:"
+          f"fontsize={fs}:x=(w-text_w)/2:y=(h-text_h)/2:line_spacing=14:"
+          f"shadowcolor=black@0.7:shadowx=3:shadowy=3{_fade_suffix(dur, fade)}")
+    cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", grad,
+           "-vf", vf, "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+           "-r", str(FPS), "-an", "-t", f"{dur}", "-vsync", "cfr", str(seg_out)]
+    _run(cmd)
+    return seg_out
+
+
 def build_segment(clip: dict, canvas: dict, idx: int, job_dir: Path, mode: str) -> Path:
     w, h = canvas["w"], canvas["h"]
     dur = max(0.4, round(clip["end"] - clip["start"], 3))
     nframes = max(1, int(dur * FPS))
-    fade = FADE_BY_MODE.get(mode, 0.1)
+    fade = FADE_BY_MODE.get(mode, 0.15)
     seg_out = job_dir / f"seg_{idx:04d}.mp4"
     common_out = [
         "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
@@ -79,14 +106,10 @@ def build_segment(clip: dict, canvas: dict, idx: int, job_dir: Path, mode: str) 
     cover = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},setsar=1"
 
     if local is None:
-        # text/color fallback card
-        color = FALLBACK_COLORS[idx % len(FALLBACK_COLORS)]
-        vf = f"format=yuv420p{_fade_suffix(dur, fade)}"
-        cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-               "-f", "lavfi", "-i", f"color=c={color}:s={w}x{h}:r={FPS}:d={dur}",
-               "-vf", vf] + common_out
-        _run(cmd)
-        return seg_out
+        return _text_card(
+            clip.get("topic") or clip.get("text") or clip.get("visual_concept"),
+            w, h, dur, fade, job_dir, idx,
+        )
 
     if local.suffix == ".mp4":
         vf = f"{cover},fps={FPS}{_fade_suffix(dur, fade)}"

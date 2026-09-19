@@ -54,6 +54,7 @@ async def config():
         },
         "formats": [{"id": k, **v} for k, v in FORMATS.items()],
         "modes": [
+            {"id": "documentary", "label": "Documentary", "desc": "Belgesel / video-essay, konuya uygun B-roll"},
             {"id": "normal", "label": "Normal", "desc": "Temiz YouTube edit'i"},
             {"id": "fast", "label": "Fast", "desc": "Daha fazla görsel, hızlı geçiş"},
             {"id": "shitpost", "label": "Shitpost", "desc": "Absürt meme, ani zoom, SFX"},
@@ -89,7 +90,7 @@ async def create_job(
     mode: str = Form("normal"),
     format: str = Form("youtube"),
 ):
-    if mode not in ("normal", "fast", "shitpost"):
+    if mode not in ("documentary", "normal", "fast", "shitpost"):
         raise HTTPException(400, "invalid mode")
     if format not in FORMATS:
         raise HTTPException(400, "invalid format")
@@ -139,7 +140,7 @@ async def get_job(job_id: str):
 
 
 @api.post("/jobs/{job_id}/render")
-async def render_job(job_id: str):
+async def render_job(job_id: str, payload: dict = Body(default={})):
     doc = await jobs.find_one({"id": job_id}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "job not found")
@@ -147,8 +148,9 @@ async def render_job(job_id: str):
         raise HTTPException(400, f"job not ready (status={doc['status']})")
     if not doc.get("timeline"):
         raise HTTPException(400, "no timeline to render")
-    worker.start_render(job_id)
-    return {"ok": True}
+    preview = payload.get("preview_seconds") if isinstance(payload, dict) else None
+    worker.start_render(job_id, preview)
+    return {"ok": True, "preview_seconds": preview}
 
 
 @api.post("/jobs/{job_id}/regenerate")

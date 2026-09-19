@@ -16,7 +16,10 @@ export const api = {
       })
       .then((r) => r.data),
   getJob: (id) => client.get(`/jobs/${id}`).then((r) => r.data),
-  renderJob: (id) => client.post(`/jobs/${id}/render`).then((r) => r.data),
+  renderJob: (id, previewSeconds) =>
+    client
+      .post(`/jobs/${id}/render`, previewSeconds ? { preview_seconds: previewSeconds } : {})
+      .then((r) => r.data),
   regenerate: (id, body) =>
     client.post(`/jobs/${id}/regenerate`, body).then((r) => r.data),
   patchJob: (id, body) => client.patch(`/jobs/${id}`, body).then((r) => r.data),

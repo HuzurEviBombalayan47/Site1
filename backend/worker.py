@@ -2,6 +2,8 @@
 import os
 import threading
 import shutil
+import subprocess
+import copy
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
@@ -77,12 +79,50 @@ def process_job(job_id: str):
         _update(job_id, status="error", stage="Hata", error=str(e)[:500])
 
 
-def render_job(job_id: str):
+def _trim_for_preview(job: dict, seconds: float, job_dir, audio_path):
+    """Return (trimmed_job, trimmed_audio_path) covering only the first `seconds`."""
+    n = float(seconds)
+    tl = copy.deepcopy(job["timeline"])
+    visuals = []
+    for c in sorted(tl["visuals"], key=lambda x: x["start"]):
+        if c["start"] >= n:
+            continue
+        c["end"] = min(c["end"], n)
+        if c["end"] - c["start"] >= 0.3:
+            visuals.append(c)
+    tl["visuals"] = visuals
+    tl["captions"] = [c for c in tl.get("captions", []) if c["start"] < n]
+    for c in tl["captions"]:
+        c["end"] = min(c["end"], n)
+    tl["sfx"] = [s for s in tl.get("sfx", []) if s["time"] < n]
+    tl["duration"] = min(tl.get("duration", n), n)
+    job = {**job, "timeline": tl}
+
+    trimmed_audio = job_dir / f"preview_input{job.get('audio_ext', '.mp3')}"
+    subprocess.run(
+        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(audio_path),
+         "-t", f"{n}", "-c", "copy", str(trimmed_audio)],
+        capture_output=True,
+    )
+    if not trimmed_audio.exists() or trimmed_audio.stat().st_size == 0:
+        subprocess.run(
+            ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(audio_path),
+             "-t", f"{n}", "-acodec", "libmp3lame", str(trimmed_audio)],
+            capture_output=True,
+        )
+    return job, trimmed_audio
+
+
+def render_job(job_id: str, preview_seconds=None):
     try:
-        _update(job_id, status="rendering", stage="Render başlıyor...", progress=0, output_ready=False)
+        label = f" (ilk {int(preview_seconds)}s test)" if preview_seconds else ""
+        _update(job_id, status="rendering", stage=f"Render başlıyor...{label}", progress=0, output_ready=False)
         job = _get(job_id)
         job_dir = _scratch(job_id)
         audio_path = _ensure_audio(job)
+
+        if preview_seconds:
+            job, audio_path = _trim_for_preview(job, preview_seconds, job_dir, audio_path)
 
         def cb(pct, stage):
             _update(job_id, progress=int(pct), stage=stage)
@@ -92,7 +132,7 @@ def render_job(job_id: str):
         _update(job_id, stage="Yükleniyor...", progress=98)
         storage.upload_file(out, okey, "video/mp4")
         _update(job_id, status="done", output_ready=True, output_key=okey,
-                stage="Video hazır", progress=100)
+                stage=f"Video hazır{label}", progress=100)
         shutil.rmtree(job_dir, ignore_errors=True)
     except Exception as e:
         traceback.print_exc()
@@ -103,5 +143,5 @@ def start_process(job_id: str):
     threading.Thread(target=process_job, args=(job_id,), daemon=True).start()
 
 
-def start_render(job_id: str):
-    threading.Thread(target=render_job, args=(job_id,), daemon=True).start()
+def start_render(job_id: str, preview_seconds=None):
+    threading.Thread(target=render_job, args=(job_id, preview_seconds), daemon=True).start()

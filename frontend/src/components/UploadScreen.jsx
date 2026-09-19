@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { UploadCloud, Music4, Zap, Flame, Clapperboard, Loader2, FileAudio } from "lucide-react";
+import { UploadCloud, Music4, Zap, Flame, Clapperboard, Film, Loader2, FileAudio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import api from "@/api";
 
 const MODES = [
+  { id: "documentary", label: "Documentary", desc: "Belgesel / video-essay, konuya uygun B-roll", icon: Film },
   { id: "normal", label: "Normal", desc: "Temiz YouTube edit'i", icon: Clapperboard },
   { id: "fast", label: "Fast", desc: "Daha fazla görsel, hızlı geçiş", icon: Zap },
   { id: "shitpost", label: "Shitpost", desc: "Absürt meme, ani zoom, kaos SFX", icon: Flame },
@@ -19,7 +20,7 @@ const FORMATS = [
 
 export default function UploadScreen({ onCreated }) {
   const [file, setFile] = useState(null);
-  const [mode, setMode] = useState("shitpost");
+  const [mode, setMode] = useState("documentary");
   const [format, setFormat] = useState("youtube");
   const [dragging, setDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -148,7 +149,7 @@ export default function UploadScreen({ onCreated }) {
       {/* Mode selector */}
       <div className="w-full max-w-2xl mt-8">
         <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3 font-mono-x">Edit modu</div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {MODES.map((m) => {
             const Icon = m.icon;
             const active = mode === m.id;

@@ -86,11 +86,11 @@ export default function Editor({ jobId, onReset }) {
     setCurrentTime(t);
   };
 
-  const startRender = async () => {
+  const startRender = async (previewSeconds) => {
     try {
-      await api.renderJob(jobId);
+      await api.renderJob(jobId, previewSeconds);
       setJob((p) => ({ ...p, status: "rendering", progress: 0, output_ready: false }));
-      toast.info("Render başladı — bu birkaç dakika sürebilir");
+      toast.info(previewSeconds ? `${previewSeconds}s test render başladı` : "Render başladı — bu birkaç dakika sürebilir");
     } catch (e) {
       toast.error("Render başlatılamadı: " + (e?.response?.data?.detail || e.message));
     }
@@ -132,6 +132,16 @@ export default function Editor({ jobId, onReset }) {
           <div className="hidden sm:flex items-center gap-2">
             <span className="text-xs font-mono-x px-2 py-0.5 rounded bg-secondary uppercase">{job.mode}</span>
             <span className="text-xs font-mono-x px-2 py-0.5 rounded bg-secondary">{job.timeline.canvas.label}</span>
+            {job.timeline.diagnostics && (
+              <span
+                data-testid="coverage-badge"
+                className="text-xs font-mono-x px-2 py-0.5 rounded"
+                style={{ background: "hsl(72 100% 55% / 0.15)", color: "var(--lime)" }}
+                title={`${job.timeline.diagnostics.num_visual_assets} görsel · ${job.timeline.diagnostics.carried_forward} carry · ${job.timeline.diagnostics.text_fallback} text`}
+              >
+                B-roll %{job.timeline.diagnostics.visual_coverage_pct}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -145,9 +155,14 @@ export default function Editor({ jobId, onReset }) {
               </Button>
             </a>
           ) : (
-            <Button data-testid="render-button" onClick={startRender} disabled={rendering} className="font-display font-bold rounded-lg" style={{ background: "var(--magenta)", color: "#fff" }}>
-              {rendering ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> {job.progress}%</> : <><Film className="w-4 h-4 mr-1.5" /> Render MP4</>}
-            </Button>
+            <>
+              <Button data-testid="test-render-button" onClick={() => startRender(60)} disabled={rendering} variant="outline" className="border-border font-medium rounded-lg hidden sm:inline-flex">
+                60s Test
+              </Button>
+              <Button data-testid="render-button" onClick={() => startRender()} disabled={rendering} className="font-display font-bold rounded-lg" style={{ background: "var(--magenta)", color: "#fff" }}>
+                {rendering ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> {job.progress}%</> : <><Film className="w-4 h-4 mr-1.5" /> Render MP4</>}
+              </Button>
+            </>
           )}
         </div>
       </header>
