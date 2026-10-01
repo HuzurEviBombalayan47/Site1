@@ -18,7 +18,7 @@ from pipeline import analyze, render
 from pipeline.timeline import default_caption_style
 import storage_s3 as storage
 
-_client = MongoClient(os.environ["MONGO_URL"])
+_client = MongoClient(os.environ["MONGO_URL"], serverSelectionTimeoutMS=5000, connect=False)
 _db = _client[os.environ["DB_NAME"]]
 _jobs = _db.jobs
 
