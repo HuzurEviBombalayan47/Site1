@@ -24,7 +24,7 @@ import storage_s3 as storage
 import worker
 
 mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000, connect=False)
 db = client[os.environ["DB_NAME"]]
 jobs = db.jobs
 
