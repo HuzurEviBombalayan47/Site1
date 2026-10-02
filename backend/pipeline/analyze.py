@@ -160,6 +160,7 @@ def build_timeline(words, duration, mode, fmt, log=lambda m: None) -> dict:
     visuals = []
     sfx = []
     prev_asset = None
+    recent_asset_urls = []  # son 3 görseli tekrar kullanma
 
     for seg in segments:
         seg_dur = seg["end"] - seg["start"]
@@ -169,11 +170,11 @@ def build_timeline(words, duration, mode, fmt, log=lambda m: None) -> dict:
 
         assets = []
         if kinds and queries:
-            assets = _resolve_multi(queries, kinds, cache, diag, want=n, seen_urls=seen)
+            assets = _resolve_multi(queries, kinds, cache, diag, want=max(n, 4), seen_urls=seen)
         # broaden with entities/topic if nothing specific found
         if not assets and kinds:
             broad = (seg.get("entities") or [])[:2] + [seg.get("topic", "")] + GENERIC_QUERIES
-            assets = _resolve_multi(broad, kinds, cache, diag, want=1, seen_urls=seen)
+            assets = _resolve_multi(broad, kinds, cache, diag, want=4, seen_urls=seen)
             for a in assets:
                 a["_generic"] = True
 
@@ -183,23 +184,29 @@ def build_timeline(words, duration, mode, fmt, log=lambda m: None) -> dict:
             e = seg["start"] + (i + 1) * sub_dur if i < n - 1 else seg["end"]
             motion = seg.get("motion", "slow_zoom")
 
-            a = assets[i] if i < len(assets) else None
-
-            # Aynı B-roll'u arka arkaya kullanma.
-            if a and visuals and a.get("url") == visuals[-1].get("url"):
-                a = None
+            # Son kullanılan 3 B-roll'u tekrar kullanma.
+# Zoom/pan değişse bile aynı görüntü yeni görselmiş gibi görünmesin.
+a = None
+for candidate in assets:
+    if candidate.get("url") and candidate.get("url") not in recent_asset_urls:
+        a = candidate
+        break
 
             if a:
                 effect = _effect_for(motion, i, style, seg.get("emphasis"))
                 src = "generic" if a.get("_generic") else "matched"
                 diag["generic" if a.get("_generic") else "matched"] += 1
                 visuals.append(_clip(s, e, seg, a, effect, src))
-                prev_asset = a
-            elif prev_asset and (not visuals or prev_asset.get("url") != visuals[-1].get("url")):
+prev_asset = a
+recent_asset_urls.append(a.get("url"))
+recent_asset_urls = recent_asset_urls[-3:]
+            elif prev_asset and prev_asset.get("url") not in recent_asset_urls:
                 # carry forward previous relevant asset with a different framing
                 effect = _effect_for("pan" if i % 2 == 0 else "slow_zoom", i + 1, style)
                 diag["carried"] += 1
                 visuals.append(_clip(s, e, seg, prev_asset, effect, "carried"))
+recent_asset_urls.append(prev_asset.get("url"))
+recent_asset_urls = recent_asset_urls[-3:]
             else:
                 # last resort: animated typography (NOT a plain solid color)
                 diag["text"] += 1
@@ -246,4 +253,5 @@ def build_timeline(words, duration, mode, fmt, log=lambda m: None) -> dict:
         "used_llm": used_llm,
         "style": style,
         "diagnostics": diagnostics,
-    }
+           }
+    
