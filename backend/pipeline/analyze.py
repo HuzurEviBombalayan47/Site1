@@ -182,14 +182,20 @@ def build_timeline(words, duration, mode, fmt, log=lambda m: None) -> dict:
             s = seg["start"] + i * sub_dur
             e = seg["start"] + (i + 1) * sub_dur if i < n - 1 else seg["end"]
             motion = seg.get("motion", "slow_zoom")
-            if assets:
-                a = assets[i % len(assets)]
+
+            a = assets[i] if i < len(assets) else None
+
+            # Aynı B-roll'u arka arkaya kullanma.
+            if a and visuals and a.get("url") == visuals[-1].get("url"):
+                a = None
+
+            if a:
                 effect = _effect_for(motion, i, style, seg.get("emphasis"))
                 src = "generic" if a.get("_generic") else "matched"
                 diag["generic" if a.get("_generic") else "matched"] += 1
                 visuals.append(_clip(s, e, seg, a, effect, src))
                 prev_asset = a
-            elif prev_asset:
+            elif prev_asset and (not visuals or prev_asset.get("url") != visuals[-1].get("url")):
                 # carry forward previous relevant asset with a different framing
                 effect = _effect_for("pan" if i % 2 == 0 else "slow_zoom", i + 1, style)
                 diag["carried"] += 1
