@@ -8,6 +8,7 @@ GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
 def _key():
+
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         raise RuntimeError("GEMINI_API_KEY is not configured")
@@ -74,7 +75,7 @@ STYLE_GUIDANCE = {
         "Serious documentary / YouTube video-essay. The visuals must SUPPORT and illustrate the narration "
         "like a human editor who deliberately gathered relevant footage. Prefer real people/events, archival "
         "photos, places, documents, and topical cinematic stock footage. NO reaction memes, NO gifs, NO jokes. "
-        "Sentence-level visual planning: change the visual for each meaningful sentence; do not merge separate sentences just to reduce the number of visuals.
+        "Sentence-level visual planning: change the visual for each meaningful sentence; do not merge separate sentences just to reduce the number of visuals."
     ),
     "normal": (
         "Clean YouTube edit. Prefer relevant real photos and B-roll that match the narration. Occasional reaction "
