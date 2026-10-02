@@ -1,167 +1,142 @@
-"""LLM provider (Google Gemini, direct API key). Documentary-grade visual planning."""
 import os
 import json
 import re
+from typing import Any, Dict, List
+
 import requests
 
-GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 
-def _key():
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
+def generate(prompt: str) -> str:
+    if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY is not configured")
-    return key
 
+    model = GEMINI_MODEL
 
-def _model():
-    return os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/"
+        f"models/{model}:generateContent"
+        f"?key={GEMINI_API_KEY}"
+    )
 
-
-FALLBACK_MODELS = ["gemini-3.6-flash", "gemini-flash-latest"]
-
-
-def generate(prompt: str, temperature: float = 0.6, max_tokens: int = 16384) -> str:
-    import time
-
-    models = [_model()] + [m for m in FALLBACK_MODELS if m != _model()]
-    body = {
-        "contents": [{"parts": [{"text": prompt}]}],
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": prompt
+                    }
+                ]
+            }
+        ],
         "generationConfig": {
-            "temperature": temperature,
-            "maxOutputTokens": max_tokens,
+            "temperature": 0.7,
+            "responseMimeType": "application/json",
         },
     }
 
-    last_err = None
+    response = requests.post(
+        url,
+        json=payload,
+        timeout=120,
+    )
 
-    for model in models:
-        for attempt in range(3):
-            try:
-                r = requests.post(
-                    f"{GEMINI_BASE}/{model}:generateContent",
-                    params={"key": _key()},
-                    json=body,
-                    timeout=180,
-                )
+    response.raise_for_status()
 
-                if r.status_code in (503, 429, 500):
-                    last_err = f"{r.status_code} on {model}"
-                    time.sleep(1.5 * (attempt + 1))
-                    continue
+    data = response.json()
 
-                r.raise_for_status()
-                data = r.json()
+    result_text = data["candidates"][0]["content"]["parts"][0]["text"]
 
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+    # DEBUG: Gemini'nin gerçekten ne döndürdüğünü Render loglarında göreceğiz.
+    print(
+        f"[LLM DEBUG] Gemini model={model} returned {len(result_text)} chars",
+        flush=True,
+    )
+    print(
+        f"[LLM DEBUG] Gemini raw response={result_text[:12000]}",
+        flush=True,
+    )
 
-            except requests.exceptions.HTTPError as e:
-                last_err = str(e)
-
-                if r.status_code in (503, 429, 500):
-                    time.sleep(1.5 * (attempt + 1))
-                    continue
-
-                break
-
-            except Exception as e:
-                last_err = str(e)
-                time.sleep(1.0)
-
-    raise RuntimeError(f"Gemini generate failed: {last_err}")
+    return result_text
 
 
-def _extract_json(text: str):
+def _extract_json(text: str) -> Dict[str, Any]:
     text = text.strip()
-    text = re.sub(r"^```(?:json)?", "", text).strip()
-    text = re.sub(r"```$", "", text).strip()
 
+    # Markdown code fence varsa temizle
+    if text.startswith("```"):
+        text = re.sub(
+            r"^```(?:json)?\s*",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+        text = re.sub(
+            r"\s*```$",
+            "",
+            text,
+        )
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # İlk JSON object'i bulmaya çalış
     start = text.find("{")
     end = text.rfind("}")
 
-    if start != -1 and end != -1:
-        text = text[start:end + 1]
+    if start != -1 and end != -1 and end > start:
+        candidate = text[start:end + 1]
+        return json.loads(candidate)
 
-    return json.loads(text)
-
-
-STYLE_GUIDANCE = {
-    "documentary": (
-        "Serious documentary / YouTube video-essay. The visuals must SUPPORT and illustrate the narration "
-        "like a human editor who deliberately gathered relevant footage. Prefer real people/events, archival "
-        "photos, places, documents, and topical cinematic stock footage. NO reaction memes, NO gifs, NO jokes. "
-        "Sentence-level visual planning: change the visual for each meaningful sentence; do not merge separate "
-        "sentences just to reduce the number of visuals."
-    ),
-    "normal": (
-        "Clean YouTube edit. Prefer relevant real photos and B-roll that match the narration. "
-        "Occasional reaction gif only if clearly warranted. Blocks ~3-6 seconds."
-    ),
-    "fast": (
-        "Fast-paced edit, more visual variety, shorter blocks (~2-4s), energetic motion. "
-        "Some reaction gifs allowed."
-    ),
-    "shitpost": (
-        "Absurd shitpost edit: reaction memes/gifs, unexpected juxtapositions, aggressive zoom on punchlines. "
-        "Still keep visuals loosely tied to what is said."
-    ),
-}
+    raise ValueError("Could not extract valid JSON from Gemini response")
 
 
-DOC_TYPES = "person, photo, archive, document, place, stock_video, graphic"
-VIRAL_TYPES = "person, photo, archive, document, place, stock_video, graphic, reaction"
+def _analyze_window(
+    narration: str,
+    start: float,
+    end: float,
+) -> List[Dict[str, Any]]:
 
+    prompt = f"""
+You are a professional documentary and YouTube video visual planner.
 
-def _analyze_window(words, win_start, win_end, style, allowed_sfx):
-    compact = " ".join(
-        f"[{w['text']}|{round(w['start'], 2)}]" for w in words
-    )
+Analyze the following narration segment and create visual scene instructions.
 
-    documentary = style == "documentary"
-    types = DOC_TYPES if documentary else VIRAL_TYPES
+NARRATION:
+{narration}
 
-    sfx_line = (
-        "- \"needs_sfx\": boolean (documentary: almost always false). "
-        "\"sfx\": one of [" + allowed_sfx + "] or null."
-        if not documentary
-        else '- "needs_sfx": false. "sfx": null.'
-    )
+TIME RANGE:
+{start} - {end} seconds
 
-    reaction_note = (
-        ""
-        if documentary
-        else
-        "Use visual_type 'reaction' ONLY for a genuinely warranted reaction gif."
-    )
+Return ONLY valid JSON.
 
-    prompt = f"""You are an expert documentary video editor planning the B-roll for a narration.
+Required structure:
 
-STYLE:
-{STYLE_GUIDANCE.get(style, STYLE_GUIDANCE["documentary"])}
+{{
+  "segments": [
+    {{
+      "start": 0,
+      "end": 5,
+      "narration": "short description",
+      "visual_concept": "specific visual concept",
+      "search_queries": [
+        "specific subject-focused search query",
+        "another specific subject-focused query"
+      ]
+    }}
+  ]
+}}
 
-The narration may be in Turkish or any language.
+IMPORTANT RULES FOR search_queries:
 
-Read the narration and UNDERSTAND its meaning.
+1. Every search query MUST describe the actual subject of the narration.
 
-Produce ENGLISH search queries for stock/archive footage.
-
-Do NOT translate word-for-word.
-Capture the actual CONCEPT and SUBJECT.
-
-Example:
-Narration: "Depresyon tohumu ekiliyordu"
-
-Bad:
-["seed", "cinematic dark background"]
-
-Good:
-["depression", "lonely person dark room", "mental health struggle", "sadness silhouette"]
-
-IMPORTANT SEARCH QUERY RULES:
-
-1. Every search query MUST describe the actual subject, person, event, place, object, situation, or concept mentioned in THIS sentence/block.
-
-2. NEVER generate generic mood, style, atmosphere, or background-only queries.
+2. Do NOT generate generic atmosphere or background queries.
 
 3. NEVER use queries such as:
 - "cinematic dark background"
@@ -176,99 +151,49 @@ IMPORTANT SEARCH QUERY RULES:
 - "beautiful cinematic footage"
 - "dark moody background"
 
-4. Do NOT use generic cinematic words as the main subject of a query.
+4. Do NOT use generic phrases just because they sound cinematic.
 
-5. If the narration mentions a specific person, event, place, organization, object, historical period, technology, company, or situation, include that specific subject in the query.
+5. Instead, identify the actual person, company, product, event, location, object, technology, historical event, or concept being discussed.
 
-6. Prefer queries that would actually return footage or images of WHAT THE NARRATION IS TALKING ABOUT.
-
-7. Use concrete visual subjects rather than emotions alone.
-
-8. If the narration is about an emotional concept, find a concrete visual representation of that concept.
-
-Example:
-"People became increasingly isolated."
-
-Good:
-["isolated person alone room", "lonely person sitting alone", "social isolation"]
+6. Example:
 
 Bad:
-["dark background", "moody atmosphere", "cinematic footage"]
-
-Example:
-"Steve Jobs introduced the iPhone in 2007."
+"cinematic dark background"
 
 Good:
-["Steve Jobs iPhone 2007", "original iPhone launch 2007", "Steve Jobs keynote 2007"]
+"Steve Jobs introducing first iPhone 2007"
+"original iPhone 2007 presentation"
+"Apple first iPhone keynote"
+
+7. Another example:
 
 Bad:
-["cinematic technology background"]
-
-Example:
-"İnsanlar fabrikalarda uzun saatler çalışıyordu."
+"dramatic cinematic footage"
 
 Good:
-["factory workers long hours", "industrial workers factory", "workers in factory 1900s"]
+"factory workers assembling smartphones"
+"modern smartphone manufacturing factory"
+"electronics production line workers"
 
-Bad:
-["cinematic industrial background"]
+8. Search queries should be useful for finding real stock footage, photographs, archival footage, news footage, GIFs, or other relevant media.
 
-9. The first query should be the MOST SPECIFIC query.
+9. Prefer concrete nouns and recognizable subjects.
 
-10. The second and third queries should be useful alternative searches for the SAME SUBJECT.
+10. Each segment should normally contain 1-4 search queries.
 
-11. Do not invent unrelated visual subjects just to make a query more cinematic.
+11. Do not invent unrelated visuals merely to make the video look cinematic.
 
-Below are transcript tokens [word|start_seconds] for the window
-{round(win_start, 2)}s..{round(win_end, 2)}s:
+12. If the narration discusses a historical event, search for that historical event specifically.
 
-{compact}
+13. If the narration discusses a person, search for that person specifically.
 
-Split THIS window into CONTIGUOUS semantic blocks covering
-{round(win_start, 2)}..{round(win_end, 2)} with no gaps/overlaps.
+14. If the narration discusses a company or product, search for that company/product specifically.
 
-Create ONE visual planning block per spoken sentence whenever the sentence
-is long enough to visualize.
+15. If the narration discusses an abstract concept, translate the concept into a concrete visual representation related to the narration.
 
-Do NOT merge separate sentences just because they discuss the same topic.
+16. The visual should explain or reinforce what is being said, not merely provide decorative background.
 
-A very short fragment may be combined with a neighboring sentence only when
-it is not independently visualizable.
-
-Typical block duration is ~2 to 6 seconds, but follow the natural sentence
-timing and meaning of the narration.
-
-For each sentence/block return an object:
-
-- "start": number, "end": number (seconds, within the window range)
-- "narration": the spoken words in this sentence/block
-- "topic": what is being explained (short)
-- "entities": array of concrete named things (people, places, organizations, events, objects)
-- "visual_concept": the single visual idea that best ILLUSTRATES this specific sentence/block
-- "visual_type": one of [{types}]
-- "search_queries": array of 2-4 CONCRETE ENGLISH search queries
-
-Search queries MUST be specifically about the current sentence/block.
-
-Never use generic cinematic/background queries.
-
-Most specific first:
-1. real person/event/object
-2. specific place/archive/document
-3. broader topical stock footage
-
-- "importance": 0..1 (how pivotal this line is)
-- "visual_priority": 0..1 (how strongly a specific visual is needed)
-- "motion": one of "slow_zoom", "pan", "static"
-- "reason": one sentence explaining WHY this visual matches the narration
-
-{sfx_line}
-
-{reaction_note}
-
-Return ONLY valid JSON:
-
-{{"segments": [{{...}}]}}
+Create the JSON now.
 """
 
     raw = generate(prompt)
@@ -276,7 +201,6 @@ Return ONLY valid JSON:
 
     segments = data.get("segments", [])
 
-    # Generic queries that should never be sent to the media providers.
     banned = {
         "cinematic dark background",
         "dark cinematic background",
@@ -291,8 +215,19 @@ Return ONLY valid JSON:
         "dark moody background",
     }
 
-    for seg in segments:
+    # DEBUG: Gemini'den parse edilen sorguları filtrelemeden önce göster.
+    print(
+        f"[LLM DEBUG] Parsed {len(segments)} segments from Gemini",
+        flush=True,
+    )
+
+    for i, seg in enumerate(segments):
         queries = seg.get("search_queries") or []
+
+        print(
+            f"[LLM DEBUG] segment {i} BEFORE filter queries={queries!r}",
+            flush=True,
+        )
 
         fallback = (
             seg.get("visual_concept")
@@ -309,71 +244,33 @@ Return ONLY valid JSON:
             if not q:
                 continue
 
-            # Exact generic query ban
             if q.lower() in banned:
                 continue
 
             cleaned.append(q)
 
-        # If Gemini returned only generic/banned queries,
-        # use the actual visual concept instead.
         if not cleaned:
             cleaned = [str(fallback).strip()]
 
         seg["search_queries"] = cleaned[:4]
 
-    return segments
-
-
-def analyze(words: list, duration: float, mode: str, sfx_names: list) -> list:
-    """Return structured shot-plan segments (absolute times). Chunks long audio."""
-
-    style = mode if mode in STYLE_GUIDANCE else "documentary"
-    allowed_sfx = ", ".join(sfx_names)
-
-    if not words:
-        return []
-
-    WINDOW = 90.0
-    segments = []
-
-    if duration <= WINDOW * 1.4:
-        segments = _analyze_window(
-            words,
-            0.0,
-            duration,
-            style,
-            allowed_sfx,
+        # DEBUG: Filtrelemeden sonra gerçekte ne kaldığını göster.
+        print(
+            f"[LLM DEBUG] segment {i} AFTER filter queries={seg['search_queries']!r}",
+            flush=True,
         )
-    else:
-        win_start = 0.0
-
-        while win_start < duration - 0.5:
-            win_end = min(duration, win_start + WINDOW)
-
-            win_words = [
-                w
-                for w in words
-                if w["start"] >= win_start - 0.01
-                and w["start"] < win_end
-            ]
-
-            if win_words:
-                try:
-                    segs = _analyze_window(
-                        win_words,
-                        win_start,
-                        win_end,
-                        style,
-                        allowed_sfx,
-                    )
-                    segments.extend(segs)
-                except Exception:
-                    pass
-
-            win_start = win_end
-
-    if not segments:
-        raise ValueError("LLM returned no segments")
 
     return segments
+
+
+def analyze(
+    narration: str,
+    start: float = 0,
+    end: float = 60,
+) -> List[Dict[str, Any]]:
+
+    return _analyze_window(
+        narration=narration,
+        start=start,
+        end=end,
+            )
