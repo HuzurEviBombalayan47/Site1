@@ -74,7 +74,7 @@ STYLE_GUIDANCE = {
         "Serious documentary / YouTube video-essay. The visuals must SUPPORT and illustrate the narration "
         "like a human editor who deliberately gathered relevant footage. Prefer real people/events, archival "
         "photos, places, documents, and topical cinematic stock footage. NO reaction memes, NO gifs, NO jokes. "
-        "Semantic blocks of ~4-8 seconds; change the visual when the MEANING changes, not on every sentence."
+        "Sentence-level visual planning: change the visual for each meaningful sentence; do not merge separate sentences just to reduce the number of visuals.
     ),
     "normal": (
         "Clean YouTube edit. Prefer relevant real photos and B-roll that match the narration. Occasional reaction "
@@ -121,16 +121,16 @@ Below are transcript tokens [word|start_seconds] for the window {round(win_start
 {compact}
 
 Split THIS window into CONTIGUOUS semantic blocks covering {round(win_start,2)}..{round(win_end,2)} with no gaps/overlaps.
-Each block ~4 to 8 seconds (merge sentences about the same idea; split when the idea changes).
+Create ONE visual planning block per spoken sentence whenever the sentence is long enough to visualize. Do NOT merge separate sentences just because they discuss the same topic. A very short fragment may be combined with a neighboring sentence only when it is not independently visualizable. Typical block duration is ~2 to 6 seconds, but follow the natural sentence timing and meaning of the narration.
 
-For each block return an object:
+For each sentence/block return an object:
 - "start": number, "end": number (seconds, within the window range)
-- "narration": the spoken words in this block
+- "narration": the spoken words in this sentence/block
 - "topic": what is being explained (short)
 - "entities": array of concrete named things (people, places, organizations, events, objects)
-- "visual_concept": the single visual idea that best ILLUSTRATES this narration
+- "visual_concept": the single visual idea that best ILLUSTRATES this specific sentence/block
 - "visual_type": one of [{types}]
-- "search_queries": array of 2-4 CONCRETE ENGLISH queries, ordered best-first, to find that footage
+- "search_queries": array of 2-4 CONCRETE ENGLISH queries, ordered best-first, specifically describing THIS sentence/block; do not reuse generic queries when the sentence contains a concrete subject
   (most specific first: real person/event, then place/archive/document, then broader topical cinematic stock)
 - "importance": 0..1 (how pivotal this line is)
 - "visual_priority": 0..1 (how strongly a specific visual is needed)
