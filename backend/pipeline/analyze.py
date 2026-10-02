@@ -128,8 +128,7 @@ def _resolve_multi(
 
                 if len(found) >= want:
                     return found
-
-                break
+                    
 
     return found
 
