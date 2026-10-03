@@ -4,9 +4,11 @@ import { Toaster } from "@/components/ui/sonner";
 import UploadScreen from "@/components/UploadScreen";
 import AnalyzingScreen from "@/components/AnalyzingScreen";
 import Editor from "@/components/Editor";
+import ApiSettings from "./ApiSettings";
 
 export default function App() {
-  const [view, setView] = useState("upload"); // upload | analyzing | editor
+  const [showApiSettings, setShowApiSettings] = useState(false);
+  const [view, setView] = useState("upload");
   const [jobId, setJobId] = useState(null);
 
   const handleCreated = useCallback((id) => {
@@ -14,24 +16,104 @@ export default function App() {
     setView("analyzing");
   }, []);
 
-  const handleReady = useCallback(() => setView("editor"), []);
+  const handleReady = useCallback(() => {
+    setView("editor");
+  }, []);
 
   const handleReset = useCallback(() => {
     setJobId(null);
     setView("upload");
   }, []);
 
+  if (showApiSettings) {
+    return (
+      <div className="studio-root grain">
+        <button
+          onClick={() => setShowApiSettings(false)}
+          style={{
+            position: "fixed",
+            top: "15px",
+            left: "15px",
+            zIndex: 99999,
+            padding: "10px 15px",
+            borderRadius: "8px",
+            border: "1px solid #333",
+            background: "#151519",
+            color: "#fff",
+            cursor: "pointer",
+          }}
+        >
+          ← Geri
+        </button>
+
+        <ApiSettings />
+
+        <Toaster
+          theme="dark"
+          position="top-center"
+          toastOptions={{
+            style: {
+              background: "#111",
+              border: "1px solid #2a2a2e",
+              color: "#fff",
+            },
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="studio-root grain" data-testid="studio-root">
-      {view === "upload" && <UploadScreen onCreated={handleCreated} />}
-      {view === "analyzing" && (
-        <AnalyzingScreen jobId={jobId} onReady={handleReady} onReset={handleReset} />
+      {view === "upload" && (
+        <>
+          <button
+            onClick={() => setShowApiSettings(true)}
+            style={{
+              position: "fixed",
+              top: "15px",
+              right: "15px",
+              zIndex: 99999,
+              padding: "10px 15px",
+              borderRadius: "8px",
+              border: "1px solid #333",
+              background: "#151519",
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            ⚙️ API Ayarları
+          </button>
+
+          <UploadScreen onCreated={handleCreated} />
+        </>
       )}
-      {view === "editor" && <Editor jobId={jobId} onReset={handleReset} />}
+
+      {view === "analyzing" && (
+        <AnalyzingScreen
+          jobId={jobId}
+          onReady={handleReady}
+          onReset={handleReset}
+        />
+      )}
+
+      {view === "editor" && (
+        <Editor
+          jobId={jobId}
+          onReset={handleReset}
+        />
+      )}
+
       <Toaster
         theme="dark"
         position="top-center"
-        toastOptions={{ style: { background: "#111", border: "1px solid #2a2a2e", color: "#fff" } }}
+        toastOptions={{
+          style: {
+            background: "#111",
+            border: "1px solid #2a2a2e",
+            color: "#fff",
+          },
+        }}
       />
     </div>
   );
