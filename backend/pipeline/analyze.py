@@ -16,12 +16,7 @@ SUBSHOT_TARGET = 5.0
 SUBSHOT_MAX = 4
 
 GENERIC_QUERIES = [
-    "documentary footage",
-    "cinematic footage",
-    "archival footage",
-    "moody atmosphere",
-    "abstract light",
-    "city timelapse",
+    "documentary subject",
 ]
 
 
@@ -128,7 +123,6 @@ def _resolve_multi(
 
                 if len(found) >= want:
                     return found
-                    
 
     return found
 
@@ -280,7 +274,7 @@ def _fallback_segments(words, duration):
             "visual_type": "photo",
             "search_queries": (
                 keywords
-                or ["documentary"]
+                or ["documentary subject"]
             ),
             "importance": 0.5,
             "visual_priority": 0.5,
@@ -313,18 +307,34 @@ def build_timeline(
     used_llm = True
 
     try:
-        segments = llm.analyze(
-            words,
-            duration,
-            mode,
-            sfx_names(),
+        # Transcript word objects -> plain narration text
+        narration = " ".join(
+            str(word.get("text", "")).strip()
+            for word in words
+            if isinstance(word, dict)
+            and word.get("text")
+        ).strip()
+
+        if not narration:
+            raise ValueError(
+                "Transcript contains no usable text"
+            )
+
+        # Call the actual Gemini window analyzer directly.
+        # The previous code called llm.analyze() with 4 arguments,
+        # while its current signature only accepted 3.
+        segments = llm._analyze_window(
+            narration=narration,
+            start=0,
+            end=float(duration),
         )
+
     except Exception as exc:
         used_llm = False
 
         log(
             "AI analizi yedeğe geçti "
-            f"({str(exc)[:60]})"
+            f"({str(exc)[:120]})"
         )
 
         segments = _fallback_segments(
@@ -680,4 +690,4 @@ def build_timeline(
         "used_llm": used_llm,
         "style": style,
         "diagnostics": diagnostics,
-}
+    }
