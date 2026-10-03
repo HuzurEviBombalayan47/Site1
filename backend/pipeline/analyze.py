@@ -1083,4 +1083,4 @@ def build_timeline(
         "style": style,
 
         "diagnostics": diagnostics,
-                }
+             }
