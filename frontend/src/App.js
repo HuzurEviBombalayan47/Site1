@@ -25,6 +25,7 @@ export default function App() {
     setView("upload");
   }, []);
 
+  // API AYARLARI EKRANI
   if (showApiSettings) {
     return (
       <div className="studio-root grain">
@@ -41,6 +42,7 @@ export default function App() {
             background: "#151519",
             color: "#fff",
             cursor: "pointer",
+            fontSize: "14px",
           }}
         >
           ← Geri
@@ -63,8 +65,12 @@ export default function App() {
     );
   }
 
+  // NORMAL UYGULAMA
   return (
-    <div className="studio-root grain" data-testid="studio-root">
+    <div
+      className="studio-root grain"
+      data-testid="studio-root"
+    >
       {view === "upload" && (
         <>
           <button
@@ -80,6 +86,7 @@ export default function App() {
               background: "#151519",
               color: "#fff",
               cursor: "pointer",
+              fontSize: "14px",
             }}
           >
             ⚙️ API Ayarları
@@ -117,4 +124,4 @@ export default function App() {
       />
     </div>
   );
-}
+              }
