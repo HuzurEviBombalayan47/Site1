@@ -111,7 +111,7 @@ export default function App() {
         />
       )}
 
-      <Toaster
+            <Toaster
         theme="dark"
         position="top-center"
         toastOptions={{
@@ -124,4 +124,4 @@ export default function App() {
       />
     </div>
   );
-              }
+            }
