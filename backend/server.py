@@ -242,7 +242,26 @@ async def download_video(job_id: str):
 
 
 app.include_router(api)
+FRONTEND_DIR = ROOT_DIR.parent / "frontend" / "build"
 
+if FRONTEND_DIR.exists():
+
+    @app.get("/", include_in_schema=False)
+    async def frontend_root():
+        return FileResponse(str(FRONTEND_DIR / "index.html"))
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def frontend_fallback(path: str):
+        if path.startswith("api/"):
+            raise HTTPException(404, "Not found")
+
+        candidate = (FRONTEND_DIR / path).resolve()
+        frontend_root_path = FRONTEND_DIR.resolve()
+
+        if candidate.is_file() and frontend_root_path in candidate.parents:
+            return FileResponse(str(candidate))
+
+        return FileResponse(str(FRONTEND_DIR / "index.html"))
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
