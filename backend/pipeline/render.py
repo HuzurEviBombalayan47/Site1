@@ -257,7 +257,19 @@ def render_timeline(job: dict, job_dir: Path, audio_path: Path, progress_cb) -> 
     canvas = timeline["canvas"]
     visuals = sorted(timeline["visuals"], key=lambda c: c["start"])
     mode = job.get("mode", "normal")
+    # Preserve the original audio timeline.
+    # concat_segments() joins clips back-to-back, so silence between
+    # transcript segments would otherwise be removed.
+    if visuals:
+        duration = float(timeline.get("duration") or 0.0)
 
+        visuals[0]["start"] = 0.0
+
+        for i in range(len(visuals) - 1):
+            visuals[i]["end"] = float(visuals[i + 1]["start"])
+
+        if duration > 0:
+            visuals[-1]["end"] = duration
     progress_cb(5, "Görseller indiriliyor...")
     seg_paths = []
     total = len(visuals)
