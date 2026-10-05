@@ -270,6 +270,96 @@ def _clip(
     }
 
 
+# ============================================================
+# HARD RULE:
+# B-ROLL'LAR ASLA ÜST ÜSTE BİNEMEZ.
+#
+# Her görsel bir öncekinin bittiği anda başlar.
+# Overlap varsa otomatik olarak düzeltilir.
+# Geçersiz / sıfır süreli klipler silinir.
+# Timeline tamamen sıralı ve kesintisiz tutulur.
+# ============================================================
+def _sanitize_visual_timeline(visuals, duration):
+    if not visuals:
+        return []
+
+    try:
+        duration = float(duration)
+    except (TypeError, ValueError):
+        return []
+
+    if duration <= 0:
+        return []
+
+    ordered = sorted(
+        visuals,
+        key=lambda clip: float(
+            clip.get("start", 0.0)
+        ),
+    )
+
+    safe = []
+    cursor = 0.0
+
+    for clip in ordered:
+        try:
+            original_end = float(
+                clip.get("end", 0.0)
+            )
+        except (TypeError, ValueError):
+            continue
+
+        # HARD NO-OVERLAP RULE:
+        # Yeni klip hiçbir zaman cursor'dan önce başlayamaz.
+        start = cursor
+
+        # End hiçbir zaman video süresini geçemez.
+        end = min(
+            max(original_end, start),
+            duration,
+        )
+
+        # Sıfır / negatif süreli klipleri sil.
+        if end <= start + 0.001:
+            continue
+
+        clip["start"] = round(start, 3)
+        clip["end"] = round(end, 3)
+
+        safe.append(clip)
+
+        cursor = end
+
+        if cursor >= duration:
+            break
+
+    if not safe:
+        return []
+
+    # İlk görsel kesinlikle 0'dan başlar.
+    safe[0]["start"] = 0.0
+
+    # Her görsel bir sonraki görselin başladığı yerde biter.
+    for index in range(len(safe) - 1):
+        safe[index]["end"] = safe[index + 1]["start"]
+
+    # Son görsel videonun sonunda biter.
+    safe[-1]["end"] = round(
+        duration,
+        3,
+    )
+
+    # Son güvenlik filtresi.
+    safe = [
+        clip
+        for clip in safe
+        if clip["end"]
+        > clip["start"] + 0.001
+    ]
+
+    return safe
+
+
 def _fallback_segments(words, duration):
     """Naive semantic blocks if the LLM fails."""
     segments = []
@@ -472,6 +562,253 @@ def build_timeline(
         ):
             start = (
                 seg["start"]
+                + index * sub_duration
+            )
+
+            if index < number_of_shots - 1:
+                end = (
+                    seg["start"]
+                    + (index + 1)
+                    * sub_duration
+                )
+            else:
+                end = seg["end"]
+
+            motion = seg.get(
+                "motion",
+                "slow_zoom",
+            )
+
+            selected_asset = None
+
+            for candidate in assets:
+                candidate_url = (
+                    candidate.get("url")
+                )
+
+                if not candidate_url:
+                    continue
+
+                if (
+                    candidate_url
+                    in recent_asset_urls
+                ):
+                    continue
+
+                selected_asset = candidate
+                break
+
+            if selected_asset:
+                effect = _effect_for(
+                    motion,
+                    index,
+                    style,
+                    seg.get(
+                        "emphasis",
+                        False,
+                    ),
+                )
+
+                if selected_asset.get(
+                    "_generic",
+                    False,
+                ):
+                    source = "generic"
+                    diagnostics_search[
+                        "generic"
+                    ] += 1
+                else:
+                    source = "matched"
+                    diagnostics_search[
+                        "matched"
+                    ] += 1
+
+                visuals.append(
+                    _clip(
+                        start,
+                        end,
+                        seg,
+                        selected_asset,
+                        effect,
+                        source,
+                    )
+                )
+
+                selected_url = (
+                    selected_asset.get(
+                        "url"
+                    )
+                )
+
+                if selected_url:
+                    recent_asset_urls.append(
+                        selected_url
+                    )
+
+                    recent_asset_urls = (
+                        recent_asset_urls[-3:]
+                    )
+
+            else:
+                diagnostics_search[
+                    "text"
+                ] += 1
+
+                visuals.append(
+                    _clip(
+                        start,
+                        end,
+                        seg,
+                        None,
+                        "kenburns",
+                        "text",
+                    )
+                )
+
+        if (
+            style != "documentary"
+            and seg.get("needs_sfx")
+            and seg.get("sfx")
+            in sfx_names()
+        ):
+            sfx.append({
+                "id": str(uuid.uuid4()),
+                "time": round(
+                    seg["start"],
+                    3,
+                ),
+                "name": seg.get("sfx"),
+                "volume": 0.9,
+            })
+
+    # ========================================================
+    # FINAL HARD NO-OVERLAP SANITIZER
+    # ========================================================
+    # Bütün B-roll timeline'ı burada son kez temizleniyor.
+    # Bundan sonra overlap kalmasına izin verilmiyor.
+    visuals = _sanitize_visual_timeline(
+        visuals,
+        duration,
+    )
+
+    log("Altyazılar oluşturuluyor...")
+
+    captions = T.build_caption_lines(
+        words
+    )
+
+    covered = sum(
+        clip["end"] - clip["start"]
+        for clip in visuals
+        if clip["source"]
+        in (
+            "matched",
+            "generic",
+        )
+    )
+
+    unique_urls = {
+        clip["url"]
+        for clip in visuals
+        if clip["url"]
+    }
+
+    pexels_count = sum(
+        1
+        for clip in visuals
+        if clip.get("provider")
+        == "pexels"
+    )
+
+    giphy_count = sum(
+        1
+        for clip in visuals
+        if clip.get("provider")
+        == "giphy"
+    )
+
+    durations = [
+        clip["end"] - clip["start"]
+        for clip in visuals
+    ]
+
+    diagnostics = {
+        "total_spoken_duration": round(
+            duration,
+            2,
+        ),
+        "visual_coverage_pct": (
+            round(
+                100.0
+                * covered
+                / duration,
+                1,
+            )
+            if duration
+            else 0
+        ),
+        "num_visual_assets": len(
+            visuals
+        ),
+        "num_unique_assets": len(
+            unique_urls
+        ),
+        "pexels_assets": pexels_count,
+        "giphy_assets": giphy_count,
+        "matched": diagnostics_search[
+            "matched"
+        ],
+        "generic_fallback": diagnostics_search[
+            "generic"
+        ],
+        "carried_forward": diagnostics_search[
+            "carried"
+        ],
+        "text_fallback": diagnostics_search[
+            "text"
+        ],
+        "failed_searches": diagnostics_search[
+            "failed_searches"
+        ],
+        "empty_searches": diagnostics_search[
+            "empty_searches"
+        ],
+        "total_searches": diagnostics_search[
+            "searches"
+        ],
+        "empty_visual_gaps": diagnostics_search[
+            "text"
+        ],
+        "avg_visual_duration": (
+            round(
+                sum(durations)
+                / len(durations),
+                2,
+            )
+            if durations
+            else 0
+        ),
+    }
+
+    return {
+        "duration": round(
+            duration,
+            3,
+        ),
+        "canvas": {
+            "w": canvas["w"],
+            "h": canvas["h"],
+            "format": fmt,
+            "label": canvas["label"],
+        },
+        "visuals": visuals,
+        "captions": captions,
+        "sfx": sfx,
+        "music": [],
+        "used_llm": used_llm,
+        "style": style,
+        "diagnostics": diagnostics,
+        }"start"]
                 + index * sub_duration
             )
 
