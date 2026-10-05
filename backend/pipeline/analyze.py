@@ -1,479 +1,476 @@
-"""Orchestrates transcript -> structured LLM shot-plan -> validated asset resolution -> timeline."""
-import uuid
+import os
+import json
+import re
+from typing import Any, Dict, List
+
 import requests
 
-from providers import llm, media
-from pipeline import timeline as T
-from pipeline.sfx import sfx_names
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 
-SESSION = requests.Session()
-SESSION.headers.update({
-    "User-Agent": "ShitpostStudio/1.0 (+render-validator)"
-})
+def generate(prompt: str) -> str:
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY is not configured")
 
-SUBSHOT_TARGET = 5.0
-SUBSHOT_MAX = 4
+    model = GEMINI_MODEL
 
-GENERIC_QUERIES = [
-    "documentary footage",
-    "cinematic footage",
-    "archival footage",
-    "moody atmosphere",
-    "abstract light",
-    "city timelapse",
-]
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/"
+        f"models/{model}:generateContent"
+        f"?key={GEMINI_API_KEY}"
+    )
 
-
-def _validate(url: str) -> bool:
-    if not url:
-        return False
-
-    try:
-        r = SESSION.get(
-            url,
-            stream=True,
-            timeout=12,
-            headers={"Range": "bytes=0-4096"},
-        )
-
-        ok = r.status_code in (200, 206)
-        content_type = r.headers.get("Content-Type", "")
-        r.close()
-
-        return ok and (
-            content_type.startswith("image")
-            or content_type.startswith("video")
-            or "octet-stream" in content_type
-            or content_type == ""
-        )
-
-    except Exception:
-        return False
-
-
-def _kinds_for(visual_type: str, style: str):
-    if visual_type == "stock_video":
-        return ["video", "image"]
-
-    if visual_type == "reaction" and style != "documentary":
-        return ["gif", "image"]
-
-    if visual_type == "graphic":
-        return []
-
-    return ["image", "video"]
-
-
-def _cached_search(kind, query, cache, diag):
-    key = (kind, query.strip().lower())
-
-    if key in cache:
-        return cache[key]
-
-    try:
-        diag["searches"] += 1
-        results = media.search(kind, query)
-    except Exception:
-        diag["failed_searches"] += 1
-        results = []
-
-    if not results:
-        diag["empty_searches"] += 1
-
-    cache[key] = results
-    return results
-
-
-def _asset_identity(candidate):
-    provider = str(
-        candidate.get("provider", "") or ""
-    ).strip().lower()
-
-    provider_id = str(
-        candidate.get("provider_asset_id", "") or ""
-    ).strip()
-
-    url = str(
-        candidate.get("url", "") or ""
-    ).strip()
-
-    if provider_id:
-        return (provider, provider_id)
-
-    return (provider, url)
-
-
-def _resolve_multi(
-    queries,
-    kinds,
-    cache,
-    diag,
-    want,
-    seen_urls,
-    seen_asset_keys,
-):
-    found = []
-
-    for query in queries:
-        if not query or not query.strip():
-            continue
-
-        for kind in kinds:
-            results = _cached_search(
-                kind,
-                query,
-                cache,
-                diag,
-            )
-
-            for candidate in results[:12]:
-                if not isinstance(candidate, dict):
-                    continue
-
-                url = str(
-                    candidate.get("url", "") or ""
-                ).strip()
-
-                if not url:
-                    continue
-
-                asset_key = _asset_identity(candidate)
-
-                if url in seen_urls:
-                    continue
-
-                if asset_key in seen_asset_keys:
-                    continue
-
-                if not _validate(url):
-                    continue
-
-                seen_urls.add(url)
-                seen_asset_keys.add(asset_key)
-
-                found.append({
-                    **candidate,
-                    "query_used": query,
-                    "asset_key": "|".join(asset_key),
-                })
-
-                if len(found) >= want:
-                    return found
-
-    return found
-
-
-def _effect_for(
-    motion,
-    index,
-    style,
-    emphasis=False,
-):
-    if style == "shitpost" and emphasis:
-        return "shake"
-
-    if motion == "pan":
-        return "pan_right" if index % 2 == 0 else "pan_left"
-
-    if motion == "slow_zoom":
-        return "zoom_in" if index % 2 == 0 else "zoom_out"
-
-    if motion == "static":
-        return "kenburns"
-
-    return "kenburns" if index % 2 == 0 else "zoom_in"
-
-
-def _clip(
-    start,
-    end,
-    seg,
-    asset,
-    effect,
-    source,
-):
-    return {
-        "id": str(uuid.uuid4()),
-        "start": round(start, 3),
-        "end": round(end, 3),
-        "text": seg.get("narration")
-        or seg.get("text", ""),
-        "topic": seg.get("topic", ""),
-        "entities": seg.get("entities", []),
-        "visual_concept": seg.get(
-            "visual_concept",
-            "",
-        ),
-        "visual_type": (
-            asset["type"]
-            if asset
-            else "text"
-        ),
-        "planned_type": seg.get(
-            "visual_type",
-            "photo",
-        ),
-        "search_query": (
-            asset.get("query_used")
-            if asset
-            else (
-                seg.get("search_queries")
-                or [""]
-            )[0]
-        ),
-        "search_queries": seg.get(
-            "search_queries",
-            [],
-        ),
-        "url": (
-            asset["url"]
-            if asset
-            else None
-        ),
-        "preview": (
-            asset.get("preview")
-            if asset
-            else None
-        ),
-        "provider": (
-            asset.get("provider")
-            if asset
-            else None
-        ),
-        "credit": (
-            asset.get("credit")
-            if asset
-            else None
-        ),
-        "effect": (
-            effect
-            if effect in T.VALID_EFFECTS
-            else "kenburns"
-        ),
-        "importance": seg.get(
-            "importance",
-            0.5,
-        ),
-        "visual_priority": seg.get(
-            "visual_priority",
-            0.5,
-        ),
-        "reason": seg.get(
-            "reason",
-            seg.get("topic", ""),
-        ),
-        "source": source,
-        "emphasis": bool(
-            seg.get("emphasis", False)
-        ),
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": prompt
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.7,
+            "responseMimeType": "application/json",
+        },
     }
 
+    response = requests.post(
+        url,
+        json=payload,
+        timeout=120,
+    )
 
-# ============================================================
-# HARD RULE:
-# B-ROLL'LAR ASLA ÜST ÜSTE BİNEMEZ.
-#
-# Her görsel bir öncekinin bittiği anda başlar.
-# Overlap varsa otomatik olarak düzeltilir.
-# Geçersiz / sıfır süreli klipler silinir.
-# Timeline tamamen sıralı ve kesintisiz tutulur.
-# ============================================================
-def _sanitize_visual_timeline(visuals, duration):
-    if not visuals:
+    response.raise_for_status()
+
+    data = response.json()
+
+    result_text = data["candidates"][0]["content"]["parts"][0]["text"]
+
+    print(
+        f"[LLM DEBUG] Gemini model={model} returned {len(result_text)} chars",
+        flush=True,
+    )
+
+    print(
+        f"[LLM DEBUG] Gemini raw response={result_text[:12000]}",
+        flush=True,
+    )
+
+    return result_text
+
+
+def _extract_json(text: str) -> Dict[str, Any]:
+    text = text.strip()
+
+    if text.startswith("```"):
+        text = re.sub(
+            r"^```(?:json)?\s*",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+
+        text = re.sub(
+            r"\s*```$",
+            "",
+            text,
+        )
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    start = text.find("{")
+    end = text.rfind("}")
+
+    if start != -1 and end != -1 and end > start:
+        candidate = text[start:end + 1]
+        return json.loads(candidate)
+
+    raise ValueError(
+        "Could not extract valid JSON from Gemini response"
+    )
+
+
+def _analyze_window(
+    narration: str,
+    start: float,
+    end: float,
+) -> List[Dict[str, Any]]:
+
+    prompt = f"""
+You are a professional documentary and YouTube video visual planner.
+
+Analyze the following narration segment and create visual scene instructions.
+
+NARRATION:
+{narration}
+
+TIME RANGE:
+{start} - {end} seconds
+
+Return ONLY valid JSON.
+
+Required structure:
+
+{{
+  "segments": [
+    {{
+      "start": 0,
+      "end": 5,
+      "narration": "short description",
+      "visual_concept": "specific visual concept",
+      "search_queries": [
+        "specific subject-focused search query",
+        "another specific subject-focused query"
+      ]
+    }}
+  ]
+}}
+
+IMPORTANT RULES FOR search_queries:
+
+1. Every search query MUST describe the actual subject of the narration.
+
+2. Do NOT generate generic atmosphere or background queries.
+
+3. NEVER use queries such as:
+- "cinematic dark background"
+- "dark cinematic background"
+- "cinematic footage"
+- "dark background"
+- "moody atmosphere"
+- "abstract light"
+- "dramatic background"
+- "dramatic cinematic footage"
+- "cinematic background"
+- "beautiful cinematic footage"
+- "dark moody background"
+
+4. Do NOT use generic phrases just because they sound cinematic.
+
+5. Identify the actual person, company, product, event, location,
+object, technology, historical event, or concept being discussed.
+
+6. Example:
+
+Bad:
+"cinematic dark background"
+
+Good:
+"Steve Jobs introducing first iPhone 2007"
+"original iPhone 2007 presentation"
+"Apple first iPhone keynote"
+
+7. Another example:
+
+Bad:
+"dramatic cinematic footage"
+
+Good:
+"factory workers assembling smartphones"
+"modern smartphone manufacturing factory"
+"electronics production line workers"
+
+8. Search queries should be useful for finding real stock footage,
+photographs, archival footage, news footage, GIFs, or other relevant media.
+
+9. Prefer concrete nouns and recognizable subjects.
+
+10. Each segment should normally contain 1-4 search queries.
+
+11. Do not invent unrelated visuals merely to make the video look cinematic.
+
+12. If the narration discusses a historical event, search for that
+historical event specifically.
+
+13. If the narration discusses a person, search for that person specifically.
+
+14. If the narration discusses a company or product, search for that
+company/product specifically.
+
+15. If the narration discusses an abstract concept, translate the concept
+into a concrete visual representation related to the narration.
+
+16. The visual should explain or reinforce what is being said,
+not merely provide decorative background.
+
+Create the JSON now.
+"""
+
+    raw = generate(prompt)
+    data = _extract_json(raw)
+
+    segments = data.get("segments", [])
+
+    banned = {
+        "cinematic dark background",
+        "dark cinematic background",
+        "cinematic footage",
+        "dark background",
+        "moody atmosphere",
+        "abstract light",
+        "dramatic background",
+        "dramatic cinematic footage",
+        "cinematic background",
+        "beautiful cinematic footage",
+        "dark moody background",
+    }
+
+    print(
+        f"[LLM DEBUG] Parsed {len(segments)} segments from Gemini",
+        flush=True,
+    )
+
+    for i, seg in enumerate(segments):
+        queries = seg.get("search_queries") or []
+
+        print(
+            f"[LLM DEBUG] segment {i} BEFORE filter queries={queries!r}",
+            flush=True,
+        )
+
+        fallback = (
+            seg.get("visual_concept")
+            or seg.get("topic")
+            or seg.get("narration")
+            or "documentary subject"
+        )
+
+        cleaned = []
+
+        for q in queries:
+            q = str(q).strip()
+
+            if not q:
+                continue
+
+            if q.lower() in banned:
+                continue
+
+            cleaned.append(q)
+
+        if not cleaned:
+            cleaned = [str(fallback).strip()]
+
+        seg["search_queries"] = cleaned[:4]
+
+        print(
+            f"[LLM DEBUG] segment {i} AFTER filter queries="
+            f"{seg['search_queries']!r}",
+            flush=True,
+        )
+
+    return segments
+
+
+def analyze(
+    words,
+    duration: float = 60,
+    mode: str = "documentary",
+    sfx=None,
+) -> List[Dict[str, Any]]:
+    """
+    Compatibility entry point for pipeline/analyze.py.
+
+    Receives AssemblyAI word timings, splits the transcript into
+    45-second windows, and sends each window to Gemini.
+    """
+
+    if not words:
         return []
 
     try:
         duration = float(duration)
     except (TypeError, ValueError):
-        return []
+        duration = 60.0
 
     if duration <= 0:
         return []
 
-    ordered = sorted(
-        visuals,
-        key=lambda clip: float(
-            clip.get("start", 0.0)
-        ),
-    )
+    window_size = 45.0
+    result = []
 
-    safe = []
-    cursor = 0.0
-
-    for clip in ordered:
+    def get_word_start(word):
         try:
-            original_end = float(
-                clip.get("end", 0.0)
-            )
+            return float(word.get("start", 0))
         except (TypeError, ValueError):
-            continue
+            return 0.0
 
-        # HARD NO-OVERLAP RULE:
-        # Yeni klip hiçbir zaman cursor'dan önce başlayamaz.
-        start = cursor
+    start_time = 0.0
 
-        # End hiçbir zaman video süresini geçemez.
-        end = min(
-            max(original_end, start),
+    while start_time < duration:
+
+        end_time = min(
             duration,
-        )
-
-        # Sıfır / negatif süreli klipleri sil.
-        if end <= start + 0.001:
-            continue
-
-        clip["start"] = round(start, 3)
-        clip["end"] = round(end, 3)
-
-        safe.append(clip)
-
-        cursor = end
-
-        if cursor >= duration:
-            break
-
-    if not safe:
-        return []
-
-    # İlk görsel kesinlikle 0'dan başlar.
-    safe[0]["start"] = 0.0
-
-    # Her görsel bir sonraki görselin başladığı yerde biter.
-    for index in range(len(safe) - 1):
-        safe[index]["end"] = safe[index + 1]["start"]
-
-    # Son görsel videonun sonunda biter.
-    safe[-1]["end"] = round(
-        duration,
-        3,
-    )
-
-    # Son güvenlik filtresi.
-    safe = [
-        clip
-        for clip in safe
-        if clip["end"]
-        > clip["start"] + 0.001
-    ]
-
-    return safe
-
-
-def _fallback_segments(words, duration):
-    """Naive semantic blocks if the LLM fails."""
-    segments = []
-    current = 0.0
-    chunk = 6.0
-
-    while current < duration:
-        end = min(
-            duration,
-            current + chunk,
+            start_time + window_size,
         )
 
         block = [
             word
             for word in words
-            if current <= word["start"] < end
+            if start_time <= get_word_start(word) < end_time
         ]
 
-        text = " ".join(
-            word["text"]
-            for word in block
-        )
+        narration_parts = []
 
-        keywords = [
-            word["text"].strip(
-                ".,!?"
-            )
-            for word in block
-            if len(word["text"]) > 4
-        ][:4]
+        for word in block:
+            text = str(
+                word.get("text", "")
+            ).strip()
 
-        segments.append({
-            "start": current,
-            "end": end,
-            "narration": text,
-            "topic": text[:60],
-            "entities": keywords,
-            "visual_concept": text[:50],
-            "visual_type": "photo",
-            "search_queries": (
-                keywords
-                or ["documentary"]
-            ),
-            "importance": 0.5,
-            "visual_priority": 0.5,
-            "motion": "slow_zoom",
-            "reason": "keyword-based fallback",
-        })
+            if text:
+                narration_parts.append(text)
 
-        current = end
+        narration = " ".join(narration_parts).strip()
 
-    return segments
+        if narration:
 
+            try:
+                segments = _analyze_window(
+                    narration=narration,
+                    start=start_time,
+                    end=end_time,
+                )
 
-def build_timeline(
-    words,
-    duration,
-    mode,
-    fmt,
-    log=lambda message: None,
-) -> dict:
+            except Exception as exc:
 
-    canvas = T.FORMATS.get(
-        fmt,
-        T.FORMATS["youtube"],
+                print(
+                    f"[LLM DEBUG] window "
+                    f"{start_time:.1f}-{end_time:.1f} failed: "
+                    f"{str(exc)[:500]}",
+                    flush=True,
+                )
+
+                segments = []
+
+            for seg in segments:
+
+                if not isinstance(seg, dict):
+                    continue
+
+                try:
+                    seg_start = float(
+                        seg.get(
+                            "start",
+                            start_time,
+                        )
+                    )
+
+                except (TypeError, ValueError):
+                    seg_start = start_time
+
+                try:
+                    seg_end = float(
+                        seg.get(
+                            "end",
+                            end_time,
+                        )
+                    )
+
+                except (TypeError, ValueError):
+                    seg_end = end_time
+
+                # Gemini sometimes returns times relative
+                # to the current analysis window.
+                if seg_start < start_time:
+                    seg_start += start_time
+                    seg_end += start_time
+
+                seg_start = max(
+                    start_time,
+                    min(
+                        seg_start,
+                        end_time,
+                    ),
+                )
+
+                seg_end = max(
+                    seg_start,
+                    min(
+                        seg_end,
+                        end_time,
+                    ),
+                )
+
+                if seg_end <= seg_start:
+                    continue
+
+                seg["start"] = round(
+                    seg_start,
+                    3,
+                )
+
+                seg["end"] = round(
+                    seg_end,
+                    3,
+                )
+
+                seg.setdefault(
+                    "narration",
+                    narration,
+                )
+
+                seg.setdefault(
+                    "topic",
+                    seg.get(
+                        "visual_concept"
+                    ) or narration[:120],
+                )
+
+                seg.setdefault(
+                    "visual_concept",
+                    seg.get(
+                        "topic"
+                    ) or narration[:120],
+                )
+
+                seg.setdefault(
+                    "visual_type",
+                    "photo",
+                )
+
+                seg.setdefault(
+                    "motion",
+                    "slow_zoom",
+                )
+
+                seg.setdefault(
+                    "entities",
+                    [],
+                )
+
+                seg.setdefault(
+                    "importance",
+                    0.5,
+                )
+
+                seg.setdefault(
+                    "visual_priority",
+                    0.5,
+                )
+
+                seg.setdefault(
+                    "reason",
+                    "Gemini subject-focused visual plan",
+                )
+
+                result.append(seg)
+
+        start_time = end_time
+
+    print(
+        f"[LLM DEBUG] analyze() produced "
+        f"{len(result)} visual segments",
+        flush=True,
     )
 
-    style = mode
-
-    log("Konular belirleniyor...")
-
-    used_llm = True
-
-    try:
-        segments = llm.analyze(
-            words,
-            duration,
-            mode,
-            sfx_names(),
-        )
-    except Exception as exc:
-        used_llm = False
-
-        log(
-            "AI analizi yedeğe geçti "
-            f"({str(exc)[:60]})"
-        )
-
-        segments = _fallback_segments(
-            words,
-            duration,
-        )
-
-    segments = T.normalize_segments(
-        segments,
-        duration,
-    )
-
-    log(
-        "Görseller aranıyor ve "
-        "doğrulanıyor..."
-    )
-
-    diagnostics_search = {
-        "searches": 0,
-        "failed_searches": 0,
-        "empty_searches": 0,
-        "matched": 0,
-        "carried": 0,
-        "generic": 0,
-        "text": 0,
-    }
-
-    cache = {}
+    return result= {}
     seen_urls = set()
     seen_asset_keys = set()
     recent_asset_urls = []
