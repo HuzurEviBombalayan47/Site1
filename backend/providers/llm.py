@@ -1,276 +1,668 @@
-import os
-import json
-import re
-from typing import Any, Dict, List
-
+import uuid
 import requests
 
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-
-
-def generate(prompt: str) -> str:
-    if not GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY is not configured")
-
-    model = GEMINI_MODEL
-
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/"
-        f"models/{model}:generateContent"
-        f"?key={GEMINI_API_KEY}"
-    )
-
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": prompt
-                    }
-                ]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.7,
-            "responseMimeType": "application/json",
-        },
-    }
-
-    response = requests.post(
-        url,
-        json=payload,
-        timeout=120,
-    )
-
-    response.raise_for_status()
-
-    data = response.json()
-
-    result_text = data["candidates"][0]["content"]["parts"][0]["text"]
-
-    # DEBUG: Gemini'nin gerçekten ne döndürdüğünü Render loglarında göreceğiz.
-    print(
-        f"[LLM DEBUG] Gemini model={model} returned {len(result_text)} chars",
-        flush=True,
-    )
-    print(
-        f"[LLM DEBUG] Gemini raw response={result_text[:12000]}",
-        flush=True,
-    )
-
-    return result_text
+from providers import llm, media
+from pipeline import timeline as T
+from pipeline.sfx import sfx_names
 
 
-def _extract_json(text: str) -> Dict[str, Any]:
-    text = text.strip()
+SUBSHOT_TARGET = 5.0
+SUBSHOT_MAX = 4
 
-    # Markdown code fence varsa temizle
-    if text.startswith("```"):
-        text = re.sub(
-            r"^```(?:json)?\s*",
-            "",
-            text,
-            flags=re.IGNORECASE,
-        )
-        text = re.sub(
-            r"\s*```$",
-            "",
-            text,
-        )
+
+GENERIC_QUERIES = [
+    "documentary footage",
+    "archival footage",
+    "news footage",
+    "real world footage",
+    "historical photograph",
+    "stock footage",
+]
+
+
+def _validate(url):
+    if not url:
+        return False
 
     try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
+        r = requests.head(
+            url,
+            timeout=8,
+            allow_redirects=True,
+        )
 
-    # İlk JSON object'i bulmaya çalış
-    start = text.find("{")
-    end = text.rfind("}")
+        if r.status_code >= 400:
+            return False
 
-    if start != -1 and end != -1 and end > start:
-        candidate = text[start:end + 1]
-        return json.loads(candidate)
+        content_type = (
+            r.headers.get("content-type", "")
+            .lower()
+        )
 
-    raise ValueError("Could not extract valid JSON from Gemini response")
+        return (
+            "image" in content_type
+            or "video" in content_type
+            or "octet-stream" in content_type
+            or not content_type
+        )
+
+    except Exception:
+        return False
 
 
-def _analyze_window(
-    narration: str,
-    start: float,
-    end: float,
-) -> List[Dict[str, Any]]:
+def _kinds_for(asset_type, mode):
+    if asset_type == "stock_video":
+        return ["video", "image"]
 
-    prompt = f"""
-You are a professional documentary and YouTube video visual planner.
+    if asset_type == "reaction" and mode != "documentary":
+        return ["gif", "image"]
 
-Analyze the following narration segment and create visual scene instructions.
+    if asset_type == "graphic":
+        return []
 
-NARRATION:
-{narration}
+    return ["image", "video"]
 
-TIME RANGE:
-{start} - {end} seconds
 
-Return ONLY valid JSON.
-
-Required structure:
-
-{{
-  "segments": [
-    {{
-      "start": 0,
-      "end": 5,
-      "narration": "short description",
-      "visual_concept": "specific visual concept",
-      "search_queries": [
-        "specific subject-focused search query",
-        "another specific subject-focused query"
-      ]
-    }}
-  ]
-}}
-
-IMPORTANT RULES FOR search_queries:
-
-1. Every search query MUST describe the actual subject of the narration.
-
-2. Do NOT generate generic atmosphere or background queries.
-
-3. NEVER use queries such as:
-- "cinematic dark background"
-- "dark cinematic background"
-- "cinematic footage"
-- "dark background"
-- "moody atmosphere"
-- "abstract light"
-- "dramatic background"
-- "dramatic cinematic footage"
-- "cinematic background"
-- "beautiful cinematic footage"
-- "dark moody background"
-
-4. Do NOT use generic phrases just because they sound cinematic.
-
-5. Instead, identify the actual person, company, product, event, location, object, technology, historical event, or concept being discussed.
-
-6. Example:
-
-Bad:
-"cinematic dark background"
-
-Good:
-"Steve Jobs introducing first iPhone 2007"
-"original iPhone 2007 presentation"
-"Apple first iPhone keynote"
-
-7. Another example:
-
-Bad:
-"dramatic cinematic footage"
-
-Good:
-"factory workers assembling smartphones"
-"modern smartphone manufacturing factory"
-"electronics production line workers"
-
-8. Search queries should be useful for finding real stock footage, photographs, archival footage, news footage, GIFs, or other relevant media.
-
-9. Prefer concrete nouns and recognizable subjects.
-
-10. Each segment should normally contain 1-4 search queries.
-
-11. Do not invent unrelated visuals merely to make the video look cinematic.
-
-12. If the narration discusses a historical event, search for that historical event specifically.
-
-13. If the narration discusses a person, search for that person specifically.
-
-14. If the narration discusses a company or product, search for that company/product specifically.
-
-15. If the narration discusses an abstract concept, translate the concept into a concrete visual representation related to the narration.
-
-16. The visual should explain or reinforce what is being said, not merely provide decorative background.
-
-Create the JSON now.
-"""
-
-    raw = generate(prompt)
-    data = _extract_json(raw)
-
-    segments = data.get("segments", [])
-
-    banned = {
-        "cinematic dark background",
-        "dark cinematic background",
-        "cinematic footage",
-        "dark background",
-        "moody atmosphere",
-        "abstract light",
-        "dramatic background",
-        "dramatic cinematic footage",
-        "cinematic background",
-        "beautiful cinematic footage",
-        "dark moody background",
-    }
-
-    # DEBUG: Gemini'den parse edilen sorguları filtrelemeden önce göster.
-    print(
-        f"[LLM DEBUG] Parsed {len(segments)} segments from Gemini",
-        flush=True,
+def _cached_search(
+    query,
+    kinds,
+    limit,
+    cache,
+):
+    key = (
+        query.lower().strip(),
+        tuple(kinds),
+        limit,
     )
 
-    for i, seg in enumerate(segments):
-        queries = seg.get("search_queries") or []
+    if key in cache:
+        return cache[key]
 
-        print(
-            f"[LLM DEBUG] segment {i} BEFORE filter queries={queries!r}",
-            flush=True,
+    try:
+        result = media.search(
+            query=query,
+            kinds=kinds,
+            limit=limit,
         )
 
-        fallback = (
-            seg.get("visual_concept")
-            or seg.get("topic")
-            or seg.get("narration")
-            or "documentary subject"
+        if not isinstance(result, list):
+            result = []
+
+    except Exception as exc:
+        print(
+            f"[MEDIA] search failed for {query!r}: "
+            f"{str(exc)[:300]}",
+            flush=True,
+        )
+        result = []
+
+    cache[key] = result
+    return result
+
+
+def _asset_identity(asset):
+    return (
+        asset.get("url")
+        or asset.get("src")
+        or asset.get("id")
+        or str(asset)
+    )
+
+
+def _resolve_multi(
+    queries,
+    kinds,
+    limit,
+    cache,
+    used,
+):
+    found = []
+
+    for query in queries:
+        query = str(query).strip()
+
+        if not query:
+            continue
+
+        assets = _cached_search(
+            query=query,
+            kinds=kinds,
+            limit=limit,
+            cache=cache,
         )
 
-        cleaned = []
+        for asset in assets:
 
-        for q in queries:
-            q = str(q).strip()
-
-            if not q:
+            if not isinstance(asset, dict):
                 continue
 
-            if q.lower() in banned:
+            url = (
+                asset.get("url")
+                or asset.get("src")
+                or asset.get("video_url")
+                or asset.get("image_url")
+            )
+
+            if not url:
                 continue
 
-            cleaned.append(q)
+            identity = _asset_identity(asset)
 
-        if not cleaned:
-            cleaned = [str(fallback).strip()]
+            if identity in used:
+                continue
 
-        seg["search_queries"] = cleaned[:4]
+            if not _validate(url):
+                continue
 
-        # DEBUG: Filtrelemeden sonra gerçekte ne kaldığını göster.
-        print(
-            f"[LLM DEBUG] segment {i} AFTER filter queries={seg['search_queries']!r}",
-            flush=True,
+            asset = dict(asset)
+            asset["url"] = url
+            asset["query"] = query
+
+            used.add(identity)
+            found.append(asset)
+
+            if len(found) >= limit:
+                return found
+
+    return found
+
+
+def _effect_for(
+    index,
+    visual_type="photo",
+):
+    effects = [
+        "slow_zoom",
+        "pan_left",
+        "pan_right",
+        "kenburns",
+    ]
+
+    if visual_type == "video":
+        return "none"
+
+    return effects[index % len(effects)]
+
+
+def _clip(
+    asset,
+    start,
+    end,
+    index,
+):
+    visual_type = (
+        asset.get("type")
+        or asset.get("media_type")
+        or "photo"
+    )
+
+    return {
+        "id": str(uuid.uuid4()),
+        "start": round(start, 3),
+        "end": round(end, 3),
+        "url": asset.get("url"),
+        "type": visual_type,
+        "effect": _effect_for(
+            index,
+            visual_type,
+        ),
+        "query": asset.get("query"),
+        "provider": asset.get("provider"),
+    }
+
+
+def _sanitize_visual_timeline(
+    clips,
+    duration,
+):
+    if not clips:
+        return []
+
+    clips = sorted(
+        clips,
+        key=lambda x: float(x.get("start", 0)),
+    )
+
+    result = []
+    cursor = 0.0
+
+    for clip in clips:
+
+        start = max(
+            cursor,
+            float(clip.get("start", 0)),
+        )
+
+        end = min(
+            duration,
+            float(clip.get("end", duration)),
+        )
+
+        if end <= start:
+            continue
+
+        clip = dict(clip)
+        clip["start"] = round(start, 3)
+        clip["end"] = round(end, 3)
+
+        result.append(clip)
+
+        cursor = end
+
+        if cursor >= duration:
+            break
+
+    return result
+
+
+def _fallback_segments(
+    words,
+    duration,
+):
+    segments = []
+
+    if not words:
+        return segments
+
+    chunk_start = 0.0
+    chunk_words = []
+
+    for word in words:
+
+        try:
+            start = float(word.get("start", 0))
+        except Exception:
+            start = 0.0
+
+        if (
+            start - chunk_start >= 6.0
+            and chunk_words
+        ):
+            text = " ".join(
+                str(w.get("text", "")).strip()
+                for w in chunk_words
+                if str(w.get("text", "")).strip()
+            )
+
+            keywords = [
+                x
+                for x in text.split()
+                if len(x) >= 4
+            ]
+
+            query = " ".join(
+                keywords[:6]
+            ) or GENERIC_QUERIES[
+                len(segments) % len(GENERIC_QUERIES)
+            ]
+
+            segments.append(
+                {
+                    "start": chunk_start,
+                    "end": min(
+                        duration,
+                        start,
+                    ),
+                    "narration": text,
+                    "visual_concept": query,
+                    "search_queries": [
+                        query
+                    ],
+                    "visual_type": "photo",
+                    "motion": "slow_zoom",
+                }
+            )
+
+            chunk_words = []
+            chunk_start = start
+
+        chunk_words.append(word)
+
+    if chunk_words:
+
+        text = " ".join(
+            str(w.get("text", "")).strip()
+            for w in chunk_words
+            if str(w.get("text", "")).strip()
+        )
+
+        keywords = [
+            x
+            for x in text.split()
+            if len(x) >= 4
+        ]
+
+        query = " ".join(
+            keywords[:6]
+        ) or GENERIC_QUERIES[
+            len(segments) % len(GENERIC_QUERIES)
+        ]
+
+        segments.append(
+            {
+                "start": chunk_start,
+                "end": duration,
+                "narration": text,
+                "visual_concept": query,
+                "search_queries": [
+                    query
+                ],
+                "visual_type": "photo",
+                "motion": "slow_zoom",
+            }
         )
 
     return segments
 
 
-def analyze(
-    narration: str,
-    start: float = 0,
-    end: float = 60,
-) -> List[Dict[str, Any]]:
+def build_timeline(
+    words,
+    duration,
+    mode="documentary",
+    fmt="16:9",
+    log=None,
+):
+    """
+    Build the visual timeline.
 
-    return _analyze_window(
-        narration=narration,
-        start=start,
-        end=end,
+    Gemini is responsible for determining
+    subject-specific visual queries.
+    """
+
+    if log is None:
+        log = []
+
+    cache = {}
+    used_assets = set()
+    clips = []
+
+    try:
+        segments = llm.analyze(
+            words,
+            duration,
+            mode,
+            sfx_names(),
+        )
+
+        used_llm = bool(segments)
+
+        log.append(
+            {
+                "event": "llm_analysis",
+                "segments": len(segments),
+                "used_llm": used_llm,
+            }
+        )
+
+    except Exception as exc:
+
+        print(
+            f"[ANALYZE] LLM failed, using fallback: "
+            f"{str(exc)[:500]}",
+            flush=True,
+        )
+
+        log.append(
+            {
+                "event": "llm_fallback",
+                "error": str(exc)[:500],
+            }
+        )
+
+        segments = _fallback_segments(
+            words,
+            duration,
+        )
+
+    if not segments:
+        segments = _fallback_segments(
+            words,
+            duration,
+        )
+
+    for segment_index, segment in enumerate(
+        segments
+    ):
+
+        try:
+            seg_start = float(
+                segment.get(
+                    "start",
+                    0,
+                )
             )
+
+            seg_end = float(
+                segment.get(
+                    "end",
+                    duration,
+                )
+            )
+
+        except Exception:
+            continue
+
+        seg_start = max(
+            0.0,
+            min(seg_start, duration),
+        )
+
+        seg_end = max(
+            seg_start,
+            min(seg_end, duration),
+        )
+
+        if seg_end <= seg_start:
+            continue
+
+        segment_duration = (
+            seg_end - seg_start
+        )
+
+        number_of_shots = max(
+            1,
+            min(
+                SUBSHOT_MAX,
+                round(
+                    segment_duration
+                    / SUBSHOT_TARGET
+                ),
+            ),
+        )
+
+        queries = (
+            segment.get(
+                "search_queries"
+            )
+            or []
+        )
+
+        queries = [
+            str(q).strip()
+            for q in queries
+            if str(q).strip()
+        ]
+
+        if not queries:
+
+            concept = (
+                segment.get(
+                    "visual_concept"
+                )
+                or segment.get(
+                    "topic"
+                )
+                or segment.get(
+                    "narration"
+                )
+                or "documentary subject"
+            )
+
+            queries = [
+                str(concept).strip()
+            ]
+
+        asset_type = (
+            segment.get(
+                "visual_type"
+            )
+            or "photo"
+        )
+
+        kinds = _kinds_for(
+            asset_type,
+            mode,
+        )
+
+        assets = _resolve_multi(
+            queries=queries,
+            kinds=kinds,
+            limit=number_of_shots,
+            cache=cache,
+            used=used_assets,
+        )
+
+        # If the first provider search does not
+        # return enough unique assets, broaden
+        # the search using the actual topic.
+        if len(assets) < number_of_shots:
+
+            concept = (
+                segment.get(
+                    "visual_concept"
+                )
+                or segment.get(
+                    "topic"
+                )
+                or segment.get(
+                    "narration"
+                )
+                or "documentary subject"
+            )
+
+            broad_queries = [
+                str(concept).strip(),
+                *GENERIC_QUERIES,
+            ]
+
+            extra = _resolve_multi(
+                queries=broad_queries,
+                kinds=kinds,
+                limit=number_of_shots
+                - len(assets),
+                cache=cache,
+                used=used_assets,
+            )
+
+            assets.extend(extra)
+
+        if not assets:
+            log.append(
+                {
+                    "event": "no_visual_assets",
+                    "segment": segment_index,
+                    "queries": queries,
+                }
+            )
+            continue
+
+        shot_duration = (
+            segment_duration
+            / len(assets)
+        )
+
+        for shot_index, asset in enumerate(
+            assets
+        ):
+
+            shot_start = (
+                seg_start
+                + shot_index
+                * shot_duration
+            )
+
+            shot_end = (
+                seg_start
+                + (shot_index + 1)
+                * shot_duration
+            )
+
+            clips.append(
+                _clip(
+                    asset=asset,
+                    start=shot_start,
+                    end=shot_end,
+                    index=(
+                        segment_index
+                        + shot_index
+                    ),
+                )
+            )
+
+        log.append(
+            {
+                "event": "visual_segment",
+                "segment": segment_index,
+                "start": seg_start,
+                "end": seg_end,
+                "queries": queries,
+                "assets": len(assets),
+            }
+        )
+
+    clips = _sanitize_visual_timeline(
+        clips,
+        duration,
+    )
+
+    captions = []
+
+    for word in words or []:
+
+        try:
+            start = float(
+                word.get("start", 0)
+            )
+            end = float(
+                word.get("end", start)
+            )
+        except Exception:
+            continue
+
+        text = str(
+            word.get("text", "")
+        ).strip()
+
+        if not text:
+            continue
+
+        captions.append(
+            {
+                "start": start,
+                "end": end,
+                "text": text,
+            }
+        )
+
+    diagnostics = {
+        "used_llm": any(
+            x.get("event")
+            == "llm_analysis"
+            and x.get("used_llm")
+            for x in log
+            if isinstance(x, dict)
+        ),
+        "num_clips": len(clips),
+        "num_unique_assets": len(
+            used_assets
+        ),
+        "total_searches": len(cache),
+        "duration": duration,
+    }
+
+    return {
+        "clips": clips,
+        "captions": captions,
+        "diagnostics": diagnostics,
+        "log": log,
+    }
