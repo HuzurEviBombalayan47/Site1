@@ -1,3 +1,5 @@
+"""Orchestrates transcript -> structured LLM shot-plan -> validated asset resolution -> timeline."""
+
 import uuid
 import requests
 
@@ -6,351 +8,393 @@ from pipeline import timeline as T
 from pipeline.sfx import sfx_names
 
 
+SESSION = requests.Session()
+SESSION.headers.update({
+    "User-Agent": "ShitpostStudio/1.0 (+render-validator)"
+})
+
 SUBSHOT_TARGET = 5.0
 SUBSHOT_MAX = 4
 
-
 GENERIC_QUERIES = [
     "documentary footage",
+    "cinematic footage",
     "archival footage",
-    "news footage",
-    "real world footage",
-    "historical photograph",
-    "stock footage",
+    "moody atmosphere",
+    "abstract light",
+    "city timelapse",
 ]
 
 
-def _validate(url):
+def _validate(url: str) -> bool:
     if not url:
         return False
 
     try:
-        r = requests.head(
+        r = SESSION.get(
             url,
-            timeout=8,
-            allow_redirects=True,
+            stream=True,
+            timeout=12,
+            headers={"Range": "bytes=0-4096"},
         )
 
-        if r.status_code >= 400:
-            return False
+        ok = r.status_code in (200, 206)
+        content_type = r.headers.get("Content-Type", "")
+        r.close()
 
-        content_type = (
-            r.headers.get("content-type", "")
-            .lower()
-        )
-
-        return (
-            "image" in content_type
-            or "video" in content_type
+        return ok and (
+            content_type.startswith("image")
+            or content_type.startswith("video")
             or "octet-stream" in content_type
-            or not content_type
+            or content_type == ""
         )
 
     except Exception:
         return False
 
 
-def _kinds_for(asset_type, mode):
-    if asset_type == "stock_video":
+def _kinds_for(visual_type: str, style: str):
+    if visual_type == "stock_video":
         return ["video", "image"]
 
-    if asset_type == "reaction" and mode != "documentary":
+    if visual_type == "reaction" and style != "documentary":
         return ["gif", "image"]
 
-    if asset_type == "graphic":
+    if visual_type == "graphic":
         return []
 
     return ["image", "video"]
 
 
-def _cached_search(
-    query,
-    kinds,
-    limit,
-    cache,
-):
-    key = (
-        query.lower().strip(),
-        tuple(kinds),
-        limit,
-    )
+def _cached_search(kind, query, cache, diag):
+    key = (kind, query.strip().lower())
 
     if key in cache:
         return cache[key]
 
     try:
-        result = media.search(
-            query=query,
-            kinds=kinds,
-            limit=limit,
-        )
+        diag["searches"] += 1
+        results = media.search(kind, query)
+    except Exception:
+        diag["failed_searches"] += 1
+        results = []
 
-        if not isinstance(result, list):
-            result = []
+    if not results:
+        diag["empty_searches"] += 1
 
-    except Exception as exc:
-        print(
-            f"[MEDIA] search failed for {query!r}: "
-            f"{str(exc)[:300]}",
-            flush=True,
-        )
-        result = []
-
-    cache[key] = result
-    return result
+    cache[key] = results
+    return results
 
 
-def _asset_identity(asset):
-    return (
-        asset.get("url")
-        or asset.get("src")
-        or asset.get("id")
-        or str(asset)
-    )
+def _asset_identity(candidate):
+    provider = str(
+        candidate.get("provider", "") or ""
+    ).strip().lower()
+
+    provider_id = str(
+        candidate.get("provider_asset_id", "") or ""
+    ).strip()
+
+    url = str(
+        candidate.get("url", "") or ""
+    ).strip()
+
+    if provider_id:
+        return (provider, provider_id)
+
+    return (provider, url)
 
 
 def _resolve_multi(
     queries,
     kinds,
-    limit,
     cache,
-    used,
+    diag,
+    want,
+    seen_urls,
+    seen_asset_keys,
 ):
     found = []
 
     for query in queries:
-        query = str(query).strip()
-
-        if not query:
+        if not query or not query.strip():
             continue
 
-        assets = _cached_search(
-            query=query,
-            kinds=kinds,
-            limit=limit,
-            cache=cache,
-        )
-
-        for asset in assets:
-
-            if not isinstance(asset, dict):
-                continue
-
-            url = (
-                asset.get("url")
-                or asset.get("src")
-                or asset.get("video_url")
-                or asset.get("image_url")
+        for kind in kinds:
+            results = _cached_search(
+                kind,
+                query,
+                cache,
+                diag,
             )
 
-            if not url:
-                continue
+            for candidate in results[:12]:
+                if not isinstance(candidate, dict):
+                    continue
 
-            identity = _asset_identity(asset)
+                url = str(
+                    candidate.get("url", "") or ""
+                ).strip()
 
-            if identity in used:
-                continue
+                if not url:
+                    continue
 
-            if not _validate(url):
-                continue
+                asset_key = _asset_identity(candidate)
 
-            asset = dict(asset)
-            asset["url"] = url
-            asset["query"] = query
+                if url in seen_urls:
+                    continue
 
-            used.add(identity)
-            found.append(asset)
+                if asset_key in seen_asset_keys:
+                    continue
 
-            if len(found) >= limit:
-                return found
+                if not _validate(url):
+                    continue
+
+                seen_urls.add(url)
+                seen_asset_keys.add(asset_key)
+
+                found.append({
+                    **candidate,
+                    "query_used": query,
+                    "asset_key": "|".join(asset_key),
+                })
+
+                if len(found) >= want:
+                    return found
 
     return found
 
 
 def _effect_for(
+    motion,
     index,
-    visual_type="photo",
+    style,
+    emphasis=False,
 ):
-    effects = [
-        "slow_zoom",
-        "pan_left",
-        "pan_right",
-        "kenburns",
-    ]
+    if style == "shitpost" and emphasis:
+        return "shake"
 
-    if visual_type == "video":
-        return "none"
+    if motion == "pan":
+        return "pan_right" if index % 2 == 0 else "pan_left"
 
-    return effects[index % len(effects)]
+    if motion == "slow_zoom":
+        return "zoom_in" if index % 2 == 0 else "zoom_out"
+
+    if motion == "static":
+        return "kenburns"
+
+    return "kenburns" if index % 2 == 0 else "zoom_in"
 
 
 def _clip(
-    asset,
     start,
     end,
-    index,
+    seg,
+    asset,
+    effect,
+    source,
 ):
-    visual_type = (
-        asset.get("type")
-        or asset.get("media_type")
-        or "photo"
-    )
-
     return {
         "id": str(uuid.uuid4()),
         "start": round(start, 3),
         "end": round(end, 3),
-        "url": asset.get("url"),
-        "type": visual_type,
-        "effect": _effect_for(
-            index,
-            visual_type,
+        "text": seg.get("narration")
+        or seg.get("text", ""),
+        "topic": seg.get("topic", ""),
+        "entities": seg.get("entities", []),
+        "visual_concept": seg.get(
+            "visual_concept",
+            "",
         ),
-        "query": asset.get("query"),
-        "provider": asset.get("provider"),
+        "visual_type": (
+            asset["type"]
+            if asset
+            else "text"
+        ),
+        "planned_type": seg.get(
+            "visual_type",
+            "photo",
+        ),
+        "search_query": (
+            asset.get("query_used")
+            if asset
+            else (
+                seg.get("search_queries")
+                or [""]
+            )[0]
+        ),
+        "search_queries": seg.get(
+            "search_queries",
+            [],
+        ),
+        "url": (
+            asset["url"]
+            if asset
+            else None
+        ),
+        "preview": (
+            asset.get("preview")
+            if asset
+            else None
+        ),
+        "provider": (
+            asset.get("provider")
+            if asset
+            else None
+        ),
+        "credit": (
+            asset.get("credit")
+            if asset
+            else None
+        ),
+        "effect": (
+            effect
+            if effect in T.VALID_EFFECTS
+            else "kenburns"
+        ),
+        "importance": seg.get(
+            "importance",
+            0.5,
+        ),
+        "visual_priority": seg.get(
+            "visual_priority",
+            0.5,
+        ),
+        "reason": seg.get(
+            "reason",
+            seg.get("topic", ""),
+        ),
+        "source": source,
+        "emphasis": bool(
+            seg.get("emphasis", False)
+        ),
     }
 
 
-def _sanitize_visual_timeline(
-    clips,
-    duration,
-):
-    if not clips:
+def _sanitize_visual_timeline(visuals, duration):
+    if not visuals:
         return []
 
-    clips = sorted(
-        clips,
-        key=lambda x: float(x.get("start", 0)),
+    try:
+        duration = float(duration)
+    except (TypeError, ValueError):
+        return []
+
+    if duration <= 0:
+        return []
+
+    ordered = sorted(
+        visuals,
+        key=lambda clip: float(
+            clip.get("start", 0.0)
+        ),
     )
 
-    result = []
+    safe = []
     cursor = 0.0
 
-    for clip in clips:
-
-        start = max(
-            cursor,
-            float(clip.get("start", 0)),
-        )
-
-        end = min(
-            duration,
-            float(clip.get("end", duration)),
-        )
-
-        if end <= start:
+    for clip in ordered:
+        try:
+            original_end = float(
+                clip.get("end", 0.0)
+            )
+        except (TypeError, ValueError):
             continue
 
-        clip = dict(clip)
+        start = cursor
+
+        end = min(
+            max(original_end, start),
+            duration,
+        )
+
+        if end <= start + 0.001:
+            continue
+
         clip["start"] = round(start, 3)
         clip["end"] = round(end, 3)
 
-        result.append(clip)
+        safe.append(clip)
 
         cursor = end
 
         if cursor >= duration:
             break
 
-    return result
+    if not safe:
+        return []
+
+    safe[0]["start"] = 0.0
+
+    for index in range(len(safe) - 1):
+        safe[index]["end"] = safe[index + 1]["start"]
+
+    safe[-1]["end"] = round(
+        duration,
+        3,
+    )
+
+    safe = [
+        clip
+        for clip in safe
+        if clip["end"]
+        > clip["start"] + 0.001
+    ]
+
+    return safe
 
 
-def _fallback_segments(
-    words,
-    duration,
-):
+def _fallback_segments(words, duration):
+    """Naive semantic blocks if the LLM fails."""
+
     segments = []
+    current = 0.0
+    chunk = 6.0
 
-    if not words:
-        return segments
+    while current < duration:
+        end = min(
+            duration,
+            current + chunk,
+        )
 
-    chunk_start = 0.0
-    chunk_words = []
-
-    for word in words:
-
-        try:
-            start = float(word.get("start", 0))
-        except Exception:
-            start = 0.0
-
-        if (
-            start - chunk_start >= 6.0
-            and chunk_words
-        ):
-            text = " ".join(
-                str(w.get("text", "")).strip()
-                for w in chunk_words
-                if str(w.get("text", "")).strip()
-            )
-
-            keywords = [
-                x
-                for x in text.split()
-                if len(x) >= 4
-            ]
-
-            query = " ".join(
-                keywords[:6]
-            ) or GENERIC_QUERIES[
-                len(segments) % len(GENERIC_QUERIES)
-            ]
-
-            segments.append(
-                {
-                    "start": chunk_start,
-                    "end": min(
-                        duration,
-                        start,
-                    ),
-                    "narration": text,
-                    "visual_concept": query,
-                    "search_queries": [
-                        query
-                    ],
-                    "visual_type": "photo",
-                    "motion": "slow_zoom",
-                }
-            )
-
-            chunk_words = []
-            chunk_start = start
-
-        chunk_words.append(word)
-
-    if chunk_words:
+        block = [
+            word
+            for word in words
+            if current <= word["start"] < end
+        ]
 
         text = " ".join(
-            str(w.get("text", "")).strip()
-            for w in chunk_words
-            if str(w.get("text", "")).strip()
+            word["text"]
+            for word in block
         )
 
         keywords = [
-            x
-            for x in text.split()
-            if len(x) >= 4
-        ]
+            word["text"].strip(
+                ".,!?"
+            )
+            for word in block
+            if len(word["text"]) > 4
+        ][:4]
 
-        query = " ".join(
-            keywords[:6]
-        ) or GENERIC_QUERIES[
-            len(segments) % len(GENERIC_QUERIES)
-        ]
+        segments.append({
+            "start": current,
+            "end": end,
+            "narration": text,
+            "topic": text[:60],
+            "entities": keywords,
+            "visual_concept": text[:50],
+            "visual_type": "photo",
+            "search_queries": (
+                keywords
+                or ["documentary"]
+            ),
+            "importance": 0.5,
+            "visual_priority": 0.5,
+            "motion": "slow_zoom",
+            "reason": "keyword-based fallback",
+        })
 
-        segments.append(
-            {
-                "start": chunk_start,
-                "end": duration,
-                "narration": text,
-                "visual_concept": query,
-                "search_queries": [
-                    query
-                ],
-                "visual_type": "photo",
-                "motion": "slow_zoom",
-            }
-        )
+        current = end
 
     return segments
 
@@ -358,23 +402,21 @@ def _fallback_segments(
 def build_timeline(
     words,
     duration,
-    mode="documentary",
-    fmt="16:9",
-    log=None,
+    mode,
+    fmt,
+    log=lambda message: None,
 ):
-    """
-    Build the visual timeline.
 
-    Gemini is responsible for determining
-    subject-specific visual queries.
-    """
+    canvas = T.FORMATS.get(
+        fmt,
+        T.FORMATS["youtube"],
+    )
 
-    if log is None:
-        log = []
+    style = mode
 
-    cache = {}
-    used_assets = set()
-    clips = []
+    log("Konular belirleniyor...")
+
+    used_llm = True
 
     try:
         segments = llm.analyze(
@@ -383,30 +425,12 @@ def build_timeline(
             mode,
             sfx_names(),
         )
-
-        used_llm = bool(segments)
-
-        log.append(
-            {
-                "event": "llm_analysis",
-                "segments": len(segments),
-                "used_llm": used_llm,
-            }
-        )
-
     except Exception as exc:
+        used_llm = False
 
-        print(
-            f"[ANALYZE] LLM failed, using fallback: "
-            f"{str(exc)[:500]}",
-            flush=True,
-        )
-
-        log.append(
-            {
-                "event": "llm_fallback",
-                "error": str(exc)[:500],
-            }
+        log(
+            "AI analizi yedeğe geçti "
+            f"({str(exc)[:60]})"
         )
 
         segments = _fallback_segments(
@@ -414,49 +438,36 @@ def build_timeline(
             duration,
         )
 
-    if not segments:
-        segments = _fallback_segments(
-            words,
-            duration,
-        )
+    segments = T.normalize_segments(
+        segments,
+        duration,
+    )
 
-    for segment_index, segment in enumerate(
-        segments
-    ):
+    log(
+        "Görseller aranıyor ve "
+        "doğrulanıyor..."
+    )
 
-        try:
-            seg_start = float(
-                segment.get(
-                    "start",
-                    0,
-                )
-            )
+    diagnostics_search = {
+        "searches": 0,
+        "failed_searches": 0,
+        "empty_searches": 0,
+        "matched": 0,
+        "carried": 0,
+        "generic": 0,
+        "text": 0,
+    }
 
-            seg_end = float(
-                segment.get(
-                    "end",
-                    duration,
-                )
-            )
+    cache = {}
+    seen_urls = set()
+    seen_asset_keys = set()
+    recent_asset_urls = []
+    visuals = []
+    sfx = []
 
-        except Exception:
-            continue
-
-        seg_start = max(
-            0.0,
-            min(seg_start, duration),
-        )
-
-        seg_end = max(
-            seg_start,
-            min(seg_end, duration),
-        )
-
-        if seg_end <= seg_start:
-            continue
-
+    for seg in segments:
         segment_duration = (
-            seg_end - seg_start
+            seg["end"] - seg["start"]
         )
 
         number_of_shots = max(
@@ -470,199 +481,311 @@ def build_timeline(
             ),
         )
 
-        queries = (
-            segment.get(
-                "search_queries"
-            )
-            or []
+        kinds = _kinds_for(
+            seg.get(
+                "visual_type",
+                "photo",
+            ),
+            style,
         )
 
         queries = [
-            str(q).strip()
-            for q in queries
-            if str(q).strip()
+            query
+            for query in (
+                seg.get(
+                    "search_queries",
+                    [],
+                )
+                or []
+            )
+            if query
         ]
 
-        if not queries:
+        assets = []
 
-            concept = (
-                segment.get(
-                    "visual_concept"
-                )
-                or segment.get(
-                    "topic"
-                )
-                or segment.get(
-                    "narration"
-                )
-                or "documentary subject"
+        if kinds and queries:
+            assets = _resolve_multi(
+                queries,
+                kinds,
+                cache,
+                diagnostics_search,
+                want=max(
+                    number_of_shots,
+                    4,
+                ),
+                seen_urls=seen_urls,
+                seen_asset_keys=seen_asset_keys,
             )
 
-            queries = [
-                str(concept).strip()
-            ]
-
-        asset_type = (
-            segment.get(
-                "visual_type"
-            )
-            or "photo"
-        )
-
-        kinds = _kinds_for(
-            asset_type,
-            mode,
-        )
-
-        assets = _resolve_multi(
-            queries=queries,
-            kinds=kinds,
-            limit=number_of_shots,
-            cache=cache,
-            used=used_assets,
-        )
-
-        # If the first provider search does not
-        # return enough unique assets, broaden
-        # the search using the actual topic.
-        if len(assets) < number_of_shots:
-
-            concept = (
-                segment.get(
-                    "visual_concept"
-                )
-                or segment.get(
-                    "topic"
-                )
-                or segment.get(
-                    "narration"
-                )
-                or "documentary subject"
+        if not assets and kinds:
+            broad_queries = (
+                (seg.get("entities") or [])[:2]
+                + [seg.get("topic", "")]
+                + GENERIC_QUERIES
             )
 
-            broad_queries = [
-                str(concept).strip(),
-                *GENERIC_QUERIES,
-            ]
-
-            extra = _resolve_multi(
-                queries=broad_queries,
-                kinds=kinds,
-                limit=number_of_shots
-                - len(assets),
-                cache=cache,
-                used=used_assets,
+            assets = _resolve_multi(
+                broad_queries,
+                kinds,
+                cache,
+                diagnostics_search,
+                want=4,
+                seen_urls=seen_urls,
+                seen_asset_keys=seen_asset_keys,
             )
 
-            assets.extend(extra)
+            for asset in assets:
+                asset["_generic"] = True
 
-        if not assets:
-            log.append(
-                {
-                    "event": "no_visual_assets",
-                    "segment": segment_index,
-                    "queries": queries,
-                }
-            )
-            continue
-
-        shot_duration = (
+        sub_duration = (
             segment_duration
-            / len(assets)
+            / number_of_shots
         )
 
-        for shot_index, asset in enumerate(
-            assets
+        for index in range(
+            number_of_shots
         ):
-
-            shot_start = (
-                seg_start
-                + shot_index
-                * shot_duration
+            start = (
+                seg["start"]
+                + index * sub_duration
             )
 
-            shot_end = (
-                seg_start
-                + (shot_index + 1)
-                * shot_duration
+            if index < number_of_shots - 1:
+                end = (
+                    seg["start"]
+                    + (index + 1)
+                    * sub_duration
+                )
+            else:
+                end = seg["end"]
+
+            motion = seg.get(
+                "motion",
+                "slow_zoom",
             )
 
-            clips.append(
-                _clip(
-                    asset=asset,
-                    start=shot_start,
-                    end=shot_end,
-                    index=(
-                        segment_index
-                        + shot_index
+            selected_asset = None
+
+            for candidate in assets:
+                candidate_url = (
+                    candidate.get("url")
+                )
+
+                if not candidate_url:
+                    continue
+
+                if (
+                    candidate_url
+                    in recent_asset_urls
+                ):
+                    continue
+
+                selected_asset = candidate
+                break
+
+            if selected_asset:
+                effect = _effect_for(
+                    motion,
+                    index,
+                    style,
+                    seg.get(
+                        "emphasis",
+                        False,
                     ),
                 )
-            )
 
-        log.append(
-            {
-                "event": "visual_segment",
-                "segment": segment_index,
-                "start": seg_start,
-                "end": seg_end,
-                "queries": queries,
-                "assets": len(assets),
-            }
-        )
+                if selected_asset.get(
+                    "_generic",
+                    False,
+                ):
+                    source = "generic"
+                    diagnostics_search[
+                        "generic"
+                    ] += 1
+                else:
+                    source = "matched"
+                    diagnostics_search[
+                        "matched"
+                    ] += 1
 
-    clips = _sanitize_visual_timeline(
-        clips,
+                visuals.append(
+                    _clip(
+                        start,
+                        end,
+                        seg,
+                        selected_asset,
+                        effect,
+                        source,
+                    )
+                )
+
+                selected_url = (
+                    selected_asset.get(
+                        "url"
+                    )
+                )
+
+                if selected_url:
+                    recent_asset_urls.append(
+                        selected_url
+                    )
+
+                    recent_asset_urls = (
+                        recent_asset_urls[-3:]
+                    )
+
+            else:
+                diagnostics_search[
+                    "text"
+                ] += 1
+
+                visuals.append(
+                    _clip(
+                        start,
+                        end,
+                        seg,
+                        None,
+                        "kenburns",
+                        "text",
+                    )
+                )
+
+        if (
+            style != "documentary"
+            and seg.get("needs_sfx")
+            and seg.get("sfx")
+            in sfx_names()
+        ):
+            sfx.append({
+                "id": str(uuid.uuid4()),
+                "time": round(
+                    seg["start"],
+                    3,
+                ),
+                "name": seg.get("sfx"),
+                "volume": 0.9,
+            })
+
+    visuals = _sanitize_visual_timeline(
+        visuals,
         duration,
     )
 
-    captions = []
+    log("Altyazılar oluşturuluyor...")
 
-    for word in words or []:
+    captions = T.build_caption_lines(
+        words
+    )
 
-        try:
-            start = float(
-                word.get("start", 0)
-            )
-            end = float(
-                word.get("end", start)
-            )
-        except Exception:
-            continue
-
-        text = str(
-            word.get("text", "")
-        ).strip()
-
-        if not text:
-            continue
-
-        captions.append(
-            {
-                "start": start,
-                "end": end,
-                "text": text,
-            }
+    covered = sum(
+        clip["end"] - clip["start"]
+        for clip in visuals
+        if clip["source"]
+        in (
+            "matched",
+            "generic",
         )
+    )
+
+    unique_urls = {
+        clip["url"]
+        for clip in visuals
+        if clip["url"]
+    }
+
+    pexels_count = sum(
+        1
+        for clip in visuals
+        if clip.get("provider")
+        == "pexels"
+    )
+
+    giphy_count = sum(
+        1
+        for clip in visuals
+        if clip.get("provider")
+        == "giphy"
+    )
+
+    durations = [
+        clip["end"] - clip["start"]
+        for clip in visuals
+    ]
 
     diagnostics = {
-        "used_llm": any(
-            x.get("event")
-            == "llm_analysis"
-            and x.get("used_llm")
-            for x in log
-            if isinstance(x, dict)
+        "total_spoken_duration": round(
+            duration,
+            2,
         ),
-        "num_clips": len(clips),
+        "visual_coverage_pct": (
+            round(
+                100.0
+                * covered
+                / duration,
+                1,
+            )
+            if duration
+            else 0
+        ),
+        "num_visual_assets": len(
+            visuals
+        ),
         "num_unique_assets": len(
-            used_assets
+            unique_urls
         ),
-        "total_searches": len(cache),
-        "duration": duration,
+        "pexels_assets": pexels_count,
+        "giphy_assets": giphy_count,
+        "matched": diagnostics_search[
+            "matched"
+        ],
+        "generic_fallback": diagnostics_search[
+            "generic"
+        ],
+        "carried_forward": diagnostics_search[
+            "carried"
+        ],
+        "text_fallback": diagnostics_search[
+            "text"
+        ],
+        "failed_searches": diagnostics_search[
+            "failed_searches"
+        ],
+        "empty_searches": diagnostics_search[
+            "empty_searches"
+        ],
+        "total_searches": diagnostics_search[
+            "searches"
+        ],
+        "empty_visual_gaps": diagnostics_search[
+            "text"
+        ],
+        "avg_visual_duration": (
+            round(
+                sum(durations)
+                / len(durations),
+                2,
+            )
+            if durations
+            else 0
+        ),
     }
 
     return {
-        "clips": clips,
+        "duration": round(
+            duration,
+            3,
+        ),
+        "canvas": {
+            "w": canvas["w"],
+            "h": canvas["h"],
+            "format": fmt,
+            "label": canvas["label"],
+        },
+        "visuals": visuals,
         "captions": captions,
+        "sfx": sfx,
+        "music": [],
+        "used_llm": used_llm,
+        "style": style,
         "diagnostics": diagnostics,
-        "log": log,
-            }
+    }
